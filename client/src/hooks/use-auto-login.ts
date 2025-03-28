@@ -32,7 +32,9 @@ export function useAutoLogin() {
   }>({
     queryKey: ['/api/users/current'],
     retry: false,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    // Using a silent error handler as user could be unauthenticated
+    meta: { silentError: true }
   });
 
   // Create dev user mutation

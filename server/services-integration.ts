@@ -10,6 +10,7 @@ import { createAuthService } from './services/auth-service';
 import { createTenantService } from './services/tenant-service';
 import { createSubscriptionService } from './services/subscription-service';
 import { createUserService } from './services/user-service';
+import { createPlanService } from './services/plan-service';
 import { log } from './vite';
 
 export async function setupServices(app: Express, server: Server): Promise<void> {
@@ -65,18 +66,27 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   // Create API Gateway and MCP
   const apiGateway = createApiGateway();
   const mcp = createMCP(apiGateway);
+  
+  // Register services with API Gateway
+  apiGateway.registerService('auth', 'http://localhost:5000/internal/auth');
+  apiGateway.registerService('tenants', 'http://localhost:5000/internal/tenants');
+  apiGateway.registerService('users', 'http://localhost:5000/internal/users');
+  apiGateway.registerService('plans', 'http://localhost:5000/internal/plans');
+  apiGateway.registerService('subscriptions', 'http://localhost:5000/internal/subscriptions');
 
   // Create and setup services
   const authService = createAuthService(passport);
   const tenantService = createTenantService();
   const subscriptionService = createSubscriptionService();
   const userService = createUserService();
+  const planService = createPlanService();
 
   // Register internal routes for services
   app.use('/internal/auth', authService.getRouter());
   app.use('/internal/tenants', tenantService.getRouter());
   app.use('/internal/subscriptions', subscriptionService.getRouter());
   app.use('/internal/users', userService.getRouter());
+  app.use('/internal/plans', planService.getRouter());
 
   // Register API Gateway routes
   app.use('/api-gateway', apiGateway.getRouter());

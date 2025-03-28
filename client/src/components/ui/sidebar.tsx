@@ -32,13 +32,19 @@ export function Sidebar({ isMobile, isOpen, toggleSidebar }: SidebarProps) {
     { id: "subscriptions", label: "Subscription Config", icon: "fa-credit-card" },
     { id: "verification", label: "Verification", icon: "fa-check-circle" },
   ];
+  
+  // Additional application pages (these will use router navigation)
+  const appPages = [
+    { id: "properties", label: "Property Management", icon: "fa-building", path: "/properties" },
+  ];
 
-  const handleMenuItemClick = (item: string) => {
+  const handleMenuItemClick = (item: string, path?: string) => {
     setActiveItem(item);
     if (isMobile) {
       toggleSidebar();
     }
-    setLocation(`/#${item}`);
+    // If path is provided, navigate to that path, otherwise navigate to hash
+    setLocation(path ? path : `/#${item}`);
   };
 
   useEffect(() => {
@@ -71,7 +77,10 @@ export function Sidebar({ isMobile, isOpen, toggleSidebar }: SidebarProps) {
       </div>
       
       <nav className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-1">
+        <div className="px-4 mb-2">
+          <h3 className="text-xs uppercase font-semibold text-gray-400">SaaS Framework</h3>
+        </div>
+        <ul className="space-y-1 mb-6">
           {menuItems.map((item) => (
             <li key={item.id}>
               <a
@@ -92,6 +101,35 @@ export function Sidebar({ isMobile, isOpen, toggleSidebar }: SidebarProps) {
             </li>
           ))}
         </ul>
+        
+        {appPages.length > 0 && (
+          <>
+            <div className="px-4 mb-2">
+              <h3 className="text-xs uppercase font-semibold text-gray-400">Application</h3>
+            </div>
+            <ul className="space-y-1">
+              {appPages.map((item) => (
+                <li key={item.id}>
+                  <a
+                    href={item.path}
+                    className={`flex items-center px-4 py-3 ${
+                      activeItem === item.id
+                        ? "bg-primary text-white"
+                        : "hover:bg-dark-medium"
+                    } transition-colors`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleMenuItemClick(item.id, item.path);
+                    }}
+                  >
+                    <i className={`fas ${item.icon} w-6`}></i>
+                    <span>{item.label}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </nav>
       
       <div className="p-4 border-t border-dark-medium">

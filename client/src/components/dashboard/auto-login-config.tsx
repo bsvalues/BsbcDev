@@ -1,47 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useAutoLogin } from "@/hooks/use-auto-login";
 
 export function AutoLoginConfig() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   
-  const [autoLoginEnabled, setAutoLoginEnabled] = useState(true);
+  const {
+    isAutoLoginEnabled,
+    devUserId,
+    currentUser,
+    createDevUser,
+    enableAutoLogin,
+    disableAutoLogin,
+    testAutoLogin,
+    isCreatingUser,
+    isUpdatingConfig
+  } = useAutoLogin();
+  
+  const [autoLoginEnabled, setAutoLoginEnabled] = useState(isAutoLoginEnabled);
   const [debugAuthEnabled, setDebugAuthEnabled] = useState(false);
   const [username, setUsername] = useState("dev_admin");
   const [email, setEmail] = useState("dev@example.com");
   const [password, setPassword] = useState("dev_password");
   const [role, setRole] = useState("Admin");
   
-  const { data: envData } = useQuery({
-    queryKey: ["/api/env"],
-  });
-  
-  const createUserMutation = useMutation({
-    mutationFn: async (userData: any) => {
-      const response = await apiRequest("POST", "/api/users", userData);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users/current"] });
-      toast({
-        title: "Dev User Created",
-        description: "Development user has been created successfully",
-        variant: "default",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create development user",
-        variant: "destructive",
-      });
-    }
-  });
+  // Sync local state with the actual auto-login state
+  useEffect(() => {
+    setAutoLoginEnabled(isAutoLoginEnabled);
+  }, [isAutoLoginEnabled]);
   
   const handleCreateDevUser = () => {
-    createUserMutation.mutate({
+    createDevUser({
       username,
       email,
       password,
@@ -51,6 +40,13 @@ export function AutoLoginConfig() {
   };
   
   const handleSaveConfiguration = () => {
+    // Update the auto-login configuration
+    if (autoLoginEnabled) {
+      enableAutoLogin(currentUser?.id?.toString());
+    } else {
+      disableAutoLogin();
+    }
+    
     toast({
       title: "Configuration Saved",
       description: `Auto-login ${autoLoginEnabled ? "enabled" : "disabled"} for development environment`,
@@ -64,10 +60,12 @@ export function AutoLoginConfig() {
   };
   
   const handleTestAutoLogin = () => {
+    testAutoLogin();
+    
     if (autoLoginEnabled) {
       toast({
         title: "Auto-login Test",
-        description: "Auto-login is working correctly with dev_admin user",
+        description: "Auto-login test initiated",
         variant: "default",
       });
     } else {
@@ -160,9 +158,9 @@ export function AutoLoginConfig() {
             <button 
               className="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-md transition-colors"
               onClick={handleCreateDevUser}
-              disabled={createUserMutation.isPending}
+              disabled={isCreatingUser}
             >
-              {createUserMutation.isPending ? 'Creating...' : 'Create Dev User'}
+              {isCreatingUser ? 'Creating...' : 'Create Dev User'}
             </button>
           </div>
         </div>

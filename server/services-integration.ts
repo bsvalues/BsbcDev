@@ -11,6 +11,7 @@ import { createTenantService } from './services/tenant-service';
 import { createSubscriptionService } from './services/subscription-service';
 import { createUserService } from './services/user-service';
 import { createPlanService } from './services/plan-service';
+import { createPropertyService } from './services/property-service';
 import { log } from './vite';
 
 export async function setupServices(app: Express, server: Server): Promise<void> {
@@ -73,6 +74,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   apiGateway.registerService('users', 'http://localhost:5000/internal/users');
   apiGateway.registerService('plans', 'http://localhost:5000/internal/plans');
   apiGateway.registerService('subscriptions', 'http://localhost:5000/internal/subscriptions');
+  apiGateway.registerService('properties', 'http://localhost:5000/internal/properties');
 
   // Create and setup services
   const authService = createAuthService(passport);
@@ -80,6 +82,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   const subscriptionService = createSubscriptionService();
   const userService = createUserService();
   const planService = createPlanService();
+  const propertyService = createPropertyService();
 
   // Register internal routes for services
   app.use('/internal/auth', authService.getRouter());
@@ -87,6 +90,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   app.use('/internal/subscriptions', subscriptionService.getRouter());
   app.use('/internal/users', userService.getRouter());
   app.use('/internal/plans', planService.getRouter());
+  app.use('/internal/properties', propertyService.getRouter());
 
   // Register API Gateway routes
   app.use('/api-gateway', apiGateway.getRouter());

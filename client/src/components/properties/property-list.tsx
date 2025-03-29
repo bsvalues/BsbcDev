@@ -21,9 +21,15 @@ interface PropertyListProps {
   properties: Property[];
   isLoading: boolean;
   onPropertySelect: (property: Property) => void;
+  onCompareProperties?: (properties: Property[]) => void;
 }
 
-export function PropertyList({ properties, isLoading, onPropertySelect }: PropertyListProps) {
+export function PropertyList({ 
+  properties, 
+  isLoading, 
+  onPropertySelect,
+  onCompareProperties
+}: PropertyListProps) {
   const [filteredProperties, setFilteredProperties] = useState<Property[]>(properties);
   const [selectedProperties, setSelectedProperties] = useState<Property[]>([]);
   const [sortConfig, setSortConfig] = useState<{
@@ -209,6 +215,7 @@ export function PropertyList({ properties, isLoading, onPropertySelect }: Proper
       <PropertyBatchActions 
         selectedProperties={selectedProperties}
         onClearSelection={handleClearSelection}
+        onCompareProperties={onCompareProperties}
       />
 
       {/* No properties message */}

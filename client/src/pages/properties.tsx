@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, RefreshCw, Building, FileText, Calculator, ArrowUpRight, LineChart } from 'lucide-react';
+import { PlusCircle, RefreshCw, Building, FileText, Calculator, ArrowUpRight, LineChart, BarChart2 } from 'lucide-react';
 import { Property } from '@shared/schema';
 import { PropertyForm } from '@/components/properties/property-form';
 import { PropertyList } from '@/components/properties/property-list';
@@ -20,8 +20,9 @@ export default function PropertiesPage() {
   const [activeTab, setActiveTab] = useState('list');
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedPropertiesForComparison, setSelectedPropertiesForComparison] = useState<Property[]>([]);
 
-  const { data: properties, isLoading, refetch } = useQuery({
+  const { data: properties, isLoading, refetch } = useQuery<Property[]>({
     queryKey: ['/api-gateway/properties'],
     refetchOnWindowFocus: false,
   });
@@ -166,9 +167,16 @@ export default function PropertiesPage() {
                 </CardHeader>
                 <CardContent>
                   <PropertyList 
-                    properties={properties || []} 
+                    properties={Array.isArray(properties) ? properties : []} 
                     isLoading={isLoading} 
                     onPropertySelect={handlePropertySelect}
+                    onCompareProperties={(selectedProps) => {
+                      setSelectedPropertiesForComparison(selectedProps);
+                      if (selectedProps.length > 0) {
+                        setSelectedProperty(selectedProps[0]);
+                        setActiveTab('trends');
+                      }
+                    }}
                   />
                 </CardContent>
               </Card>
@@ -245,7 +253,15 @@ export default function PropertiesPage() {
                         View historical property value data and analyze trends over time. This information can help in tax planning and property investment decisions.
                       </p>
                       
-                      <PropertyValueChart propertyId={selectedProperty.id} />
+                      {selectedPropertiesForComparison.length > 1 ? (
+                        <PropertyValueChart 
+                          propertyId={selectedProperty.id} 
+                          initialComparisonIds={selectedPropertiesForComparison.map(p => p.id)}
+                          initialMode="compare"
+                        />
+                      ) : (
+                        <PropertyValueChart propertyId={selectedProperty.id} />
+                      )}
                     </CardContent>
                   </Card>
                   

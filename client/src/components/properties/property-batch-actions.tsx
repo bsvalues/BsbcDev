@@ -31,14 +31,19 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Property } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
-import { CheckCircle, Loader2, X, AlertCircle, Download, SendHorizontal, MoreHorizontal } from 'lucide-react';
+import { CheckCircle, Loader2, X, AlertCircle, Download, SendHorizontal, MoreHorizontal, BarChart2 } from 'lucide-react';
 
 interface PropertyBatchActionsProps {
   selectedProperties: Property[];
   onClearSelection: () => void;
+  onCompareProperties?: (properties: Property[]) => void;
 }
 
-export function PropertyBatchActions({ selectedProperties, onClearSelection }: PropertyBatchActionsProps) {
+export function PropertyBatchActions({ 
+  selectedProperties, 
+  onClearSelection,
+  onCompareProperties
+}: PropertyBatchActionsProps) {
   const [action, setAction] = useState<string>('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [dialogContent, setDialogContent] = useState({
@@ -260,6 +265,18 @@ export function PropertyBatchActions({ selectedProperties, onClearSelection }: P
               <SendHorizontal className="h-4 w-4 mr-1" />
               Report
             </Button>
+            
+            {onCompareProperties && selectedProperties.length >= 2 && selectedProperties.length <= 5 && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={() => onCompareProperties(selectedProperties)}
+                className="whitespace-nowrap"
+              >
+                <BarChart2 className="h-4 w-4 mr-1" />
+                Compare Values
+              </Button>
+            )}
           </div>
         )}
         
@@ -289,6 +306,17 @@ export function PropertyBatchActions({ selectedProperties, onClearSelection }: P
                   <SendHorizontal className="mr-2 h-4 w-4" />
                   Send Email Report
                 </DropdownMenuItem>
+                
+                {onCompareProperties && selectedProperties.length >= 2 && selectedProperties.length <= 5 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Analysis</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => onCompareProperties(selectedProperties)}>
+                      <BarChart2 className="mr-2 h-4 w-4" />
+                      Compare Property Values
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

@@ -14,7 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Property } from '@shared/schema';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Eye, Building, MapPin, ArrowUpDown, ChevronRight } from 'lucide-react';
-import { PropertyFilters } from './property-filters';
+import { PropertyFilterContainer } from './property-filters';
 import { PropertyBatchActions } from './property-batch-actions';
 
 interface PropertyListProps {
@@ -206,7 +206,7 @@ export function PropertyList({
   return (
     <div>
       {/* Add filters */}
-      <PropertyFilters 
+      <PropertyFilterContainer 
         properties={properties} 
         onFilterChange={setFilteredProperties} 
       />

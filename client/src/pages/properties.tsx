@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, RefreshCw, Building, FileText, Calculator, ArrowUpRight } from 'lucide-react';
+import { PlusCircle, RefreshCw, Building, FileText, Calculator, ArrowUpRight, LineChart } from 'lucide-react';
 import { Property } from '@shared/schema';
 import { PropertyForm } from '@/components/properties/property-form';
 import { PropertyList } from '@/components/properties/property-list';
 import { PropertyDetail } from '@/components/properties/property-detail';
 import { PropertyValuation } from '@/components/properties/property-valuation';
+import { PropertyValueChart } from '@/components/properties/property-value-chart';
 import { TaxLevyForm } from '@/components/properties/tax-levy-form';
 import Sidebar from "@/components/ui/sidebar";
 
@@ -128,7 +129,7 @@ export default function PropertiesPage() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-5 w-full max-w-2xl">
+            <TabsList className="grid grid-cols-6 w-full max-w-3xl">
               <TabsTrigger value="list" className="flex items-center gap-1">
                 <Building className="h-4 w-4" />
                 Properties
@@ -140,6 +141,10 @@ export default function PropertiesPage() {
               <TabsTrigger value="valuation" disabled={!selectedProperty} className="flex items-center gap-1">
                 <Calculator className="h-4 w-4" />
                 Valuation
+              </TabsTrigger>
+              <TabsTrigger value="trends" disabled={!selectedProperty} className="flex items-center gap-1">
+                <LineChart className="h-4 w-4" />
+                Trends
               </TabsTrigger>
               <TabsTrigger value="tax-levy" disabled={!selectedProperty} className="flex items-center gap-1">
                 <ArrowUpRight className="h-4 w-4" />
@@ -198,27 +203,61 @@ export default function PropertiesPage() {
 
             <TabsContent value="valuation" className="mt-6">
               {selectedProperty && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Property Valuation</CardTitle>
-                    <CardDescription>
-                      Valuation details and assessment history
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <PropertyValuation 
-                      propertyId={selectedProperty.id}
-                    />
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Property Valuation</CardTitle>
+                      <CardDescription>
+                        Valuation details and assessment history
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <PropertyValuation 
+                        propertyId={selectedProperty.id}
+                      />
+                    </CardContent>
+                  </Card>
+                  
+                  <div className="flex justify-between">
                     <Button variant="outline" onClick={() => setActiveTab('detail')}>
                       Back to Details
+                    </Button>
+                    <Button onClick={() => setActiveTab('trends')}>
+                      View Value Trends
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="trends" className="mt-6">
+              {selectedProperty && (
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Value Trends Analysis</CardTitle>
+                      <CardDescription>
+                        Historical property value trends and comparisons
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground mb-6">
+                        View historical property value data and analyze trends over time. This information can help in tax planning and property investment decisions.
+                      </p>
+                      
+                      <PropertyValueChart propertyId={selectedProperty.id} />
+                    </CardContent>
+                  </Card>
+                  
+                  <div className="flex justify-between">
+                    <Button variant="outline" onClick={() => setActiveTab('valuation')}>
+                      Back to Valuation
                     </Button>
                     <Button onClick={() => setActiveTab('tax-levy')}>
                       View Tax Levy
                     </Button>
-                  </CardFooter>
-                </Card>
+                  </div>
+                </div>
               )}
             </TabsContent>
 

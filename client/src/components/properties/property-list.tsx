@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -10,9 +10,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent } from '@/components/ui/card';
 import { Property } from '@shared/schema';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, Building, MapPin, ArrowUpDown } from 'lucide-react';
+import { Eye, Building, MapPin, ArrowUpDown, ChevronRight } from 'lucide-react';
 import { PropertyFilters } from './property-filters';
 import { PropertyBatchActions } from './property-batch-actions';
 
@@ -29,11 +30,26 @@ export function PropertyList({ properties, isLoading, onPropertySelect }: Proper
     key: keyof Property | null,
     direction: 'asc' | 'desc'
   }>({ key: null, direction: 'asc' });
+  const [isMobile, setIsMobile] = useState(false);
 
   // Update filteredProperties when the properties prop changes
   React.useEffect(() => {
     setFilteredProperties(properties);
   }, [properties]);
+  
+  // Check for mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   // Handle select/deselect all properties
   const handleSelectAll = (checked: boolean) => {
@@ -126,6 +142,61 @@ export function PropertyList({ properties, isLoading, onPropertySelect }: Proper
     );
   }
 
+  // Mobile property card component
+  const PropertyCard = ({ property }: { property: Property }) => (
+    <Card className="mb-4">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start gap-3">
+            <Checkbox 
+              checked={selectedProperties.some(p => p.id === property.id)}
+              onCheckedChange={(checked) => handleSelectProperty(property, checked === true)}
+              aria-label={`Select property ${property.address}`}
+            />
+            <div>
+              <div className="flex items-center mb-1">
+                <MapPin className="mr-1 h-4 w-4 text-muted-foreground" />
+                <div className="font-medium">{property.address}</div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {property.city}, {property.state} {property.zipCode}
+              </div>
+            </div>
+          </div>
+          <Badge 
+            variant={property.status === 'active' ? 'default' : 
+                    property.status === 'pending' ? 'outline' : 
+                    property.status === 'review' ? 'secondary' : 'destructive'}
+          >
+            {property.status}
+          </Badge>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2 text-sm my-2">
+          <div>
+            <span className="text-muted-foreground">Parcel ID:</span>
+            <div>{property.parcelId}</div>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Type:</span>
+            <div>{property.propertyType}</div>
+          </div>
+        </div>
+        
+        <div className="flex justify-end mt-3">
+          <Button
+            size="sm"
+            onClick={() => onPropertySelect(property)}
+            className="gap-1 w-full"
+          >
+            <Eye className="h-4 w-4" />
+            View Details
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div>
       {/* Add filters */}
@@ -140,82 +211,92 @@ export function PropertyList({ properties, isLoading, onPropertySelect }: Proper
         onClearSelection={handleClearSelection}
       />
 
-      {/* Properties table */}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10">
-              <Checkbox 
-                checked={selectedProperties.length > 0 && selectedProperties.length === filteredProperties.length}
-                onCheckedChange={handleSelectAll}
-                aria-label="Select all properties"
-              />
-            </TableHead>
-            <SortableHeader column="address" label="Address" />
-            <SortableHeader column="parcelId" label="Parcel ID" />
-            <SortableHeader column="propertyType" label="Type" />
-            <SortableHeader column="status" label="Status" />
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredProperties.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center h-24">
-                <div className="flex flex-col items-center justify-center">
-                  <Building className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">No properties match the current filters</p>
-                </div>
-              </TableCell>
-            </TableRow>
-          ) : (
-            filteredProperties.map((property) => (
-              <TableRow key={property.id}>
-                <TableCell>
+      {/* No properties message */}
+      {filteredProperties.length === 0 && (
+        <div className="text-center py-10 border rounded-md bg-background">
+          <Building className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground">No properties match the current filters</p>
+        </div>
+      )}
+
+      {/* Mobile view (card layout) */}
+      {isMobile && filteredProperties.length > 0 && (
+        <div className="space-y-4 mt-4">
+          {filteredProperties.map((property) => (
+            <PropertyCard key={property.id} property={property} />
+          ))}
+        </div>
+      )}
+      
+      {/* Desktop view (table layout) */}
+      {!isMobile && filteredProperties.length > 0 && (
+        <div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">
                   <Checkbox 
-                    checked={selectedProperties.some(p => p.id === property.id)}
-                    onCheckedChange={(checked) => handleSelectProperty(property, checked === true)}
-                    aria-label={`Select property ${property.address}`}
+                    checked={selectedProperties.length > 0 && selectedProperties.length === filteredProperties.length}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all properties"
                   />
-                </TableCell>
-                <TableCell className="font-medium">
-                  <div className="flex items-center">
-                    <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div>{property.address}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {property.city}, {property.state} {property.zipCode}
+                </TableHead>
+                <SortableHeader column="address" label="Address" />
+                <SortableHeader column="parcelId" label="Parcel ID" />
+                <SortableHeader column="propertyType" label="Type" />
+                <SortableHeader column="status" label="Status" />
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProperties.map((property) => (
+                <TableRow key={property.id}>
+                  <TableCell>
+                    <Checkbox 
+                      checked={selectedProperties.some(p => p.id === property.id)}
+                      onCheckedChange={(checked) => handleSelectProperty(property, checked === true)}
+                      aria-label={`Select property ${property.address}`}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center">
+                      <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div>{property.address}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {property.city}, {property.state} {property.zipCode}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>{property.parcelId}</TableCell>
-                <TableCell>{property.propertyType}</TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={property.status === 'active' ? 'default' : 
-                            property.status === 'pending' ? 'outline' : 
-                            property.status === 'review' ? 'secondary' : 'destructive'}
-                  >
-                    {property.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onPropertySelect(property)}
-                    className="gap-1"
-                  >
-                    <Eye className="h-4 w-4" />
-                    View
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+                  </TableCell>
+                  <TableCell>{property.parcelId}</TableCell>
+                  <TableCell>{property.propertyType}</TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={property.status === 'active' ? 'default' : 
+                              property.status === 'pending' ? 'outline' : 
+                              property.status === 'review' ? 'secondary' : 'destructive'}
+                    >
+                      {property.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onPropertySelect(property)}
+                      className="gap-1"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
       
       {/* Pagination can be added here in the future */}
     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   AlertDialog, 
@@ -10,6 +10,14 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from '@/components/ui/alert-dialog';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Select, 
   SelectContent, 
@@ -23,7 +31,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Property } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
-import { CheckCircle, Loader2, X, AlertCircle, Download, SendHorizontal } from 'lucide-react';
+import { CheckCircle, Loader2, X, AlertCircle, Download, SendHorizontal, MoreHorizontal } from 'lucide-react';
 
 interface PropertyBatchActionsProps {
   selectedProperties: Property[];
@@ -37,17 +45,33 @@ export function PropertyBatchActions({ selectedProperties, onClearSelection }: P
     title: '',
     description: ''
   });
+  const [isMobile, setIsMobile] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Check for mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   // Handle updating multiple properties
   const updatePropertiesMutation = useMutation({
     mutationFn: async (properties: { id: number, update: Partial<Property> }[]) => {
       const requests = properties.map(prop => 
-        apiRequest(`/api/properties/${prop.id}`, {
-          method: 'PATCH',
-          data: prop.update
-        })
+        apiRequest(
+          'PATCH',
+          `/api/properties/${prop.id}`,
+          prop.update
+        )
       );
       return Promise.all(requests);
     },
@@ -197,44 +221,78 @@ export function PropertyBatchActions({ selectedProperties, onClearSelection }: P
           </Button>
         </div>
         
-        <div className="flex gap-2 w-full md:w-auto">
-          <Select value={action} onValueChange={handleActionChange}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue placeholder="Batch Actions..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Update Actions</SelectLabel>
-                <SelectItem value="updateStatus">Mark as Reviewed</SelectItem>
-              </SelectGroup>
-              <SelectGroup>
-                <SelectLabel>Export Actions</SelectLabel>
-                <SelectItem value="export">Export to CSV</SelectItem>
-                <SelectItem value="email">Send Email Report</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={exportToCSV}
-            className="whitespace-nowrap"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={sendEmailReport}
-            className="whitespace-nowrap"
-          >
-            <SendHorizontal className="h-4 w-4 mr-1" />
-            Report
-          </Button>
-        </div>
+        {/* Desktop actions */}
+        {!isMobile && (
+          <div className="flex gap-2 w-full md:w-auto">
+            <Select value={action} onValueChange={handleActionChange}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Batch Actions..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Update Actions</SelectLabel>
+                  <SelectItem value="updateStatus">Mark as Reviewed</SelectItem>
+                </SelectGroup>
+                <SelectGroup>
+                  <SelectLabel>Export Actions</SelectLabel>
+                  <SelectItem value="export">Export to CSV</SelectItem>
+                  <SelectItem value="email">Send Email Report</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exportToCSV}
+              className="whitespace-nowrap"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Export
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={sendEmailReport}
+              className="whitespace-nowrap"
+            >
+              <SendHorizontal className="h-4 w-4 mr-1" />
+              Report
+            </Button>
+          </div>
+        )}
+        
+        {/* Mobile actions */}
+        {isMobile && (
+          <div className="flex gap-2 w-full justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full">
+                  Actions <MoreHorizontal className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>Update Actions</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleActionChange("updateStatus")}>
+                  Mark as Reviewed
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuLabel>Export Actions</DropdownMenuLabel>
+                <DropdownMenuItem onClick={exportToCSV}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export to CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={sendEmailReport}>
+                  <SendHorizontal className="mr-2 h-4 w-4" />
+                  Send Email Report
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>

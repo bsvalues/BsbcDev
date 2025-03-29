@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent } from '@/components/ui/card';
-import { X, Search, Filter, ChevronDown, ChevronUp } from 'lucide-react';
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetDescription, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetTrigger,
+  SheetFooter,
+  SheetClose
+} from "@/components/ui/sheet";
+import { X, Search, Filter, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 import { Property } from '@shared/schema';
 
 interface PropertyFiltersProps {
@@ -23,6 +33,21 @@ export function PropertyFilters({ onFilterChange, properties }: PropertyFiltersP
   const [status, setStatus] = useState<string>('');
   const [city, setCity] = useState<string>('');
   const [state, setState] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Check for mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   // Get unique property types from data
   const propertyTypes = React.useMemo(() => {
@@ -174,11 +199,128 @@ export function PropertyFilters({ onFilterChange, properties }: PropertyFiltersP
     applyFilters();
   }, [searchTerm, propertyType, minValue, maxValue, status, city, state]);
 
+  // Filter form content shared between desktop and mobile
+  const FiltersForm = () => (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+      <div className="space-y-2">
+        <Label htmlFor="propertyType">Property Type</Label>
+        <Select value={propertyType} onValueChange={setPropertyType}>
+          <SelectTrigger id="propertyType">
+            <SelectValue placeholder="All property types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All property types</SelectItem>
+            {propertyTypes.map(type => (
+              <SelectItem key={type} value={type}>{type}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="city">City</Label>
+        <Select value={city} onValueChange={setCity}>
+          <SelectTrigger id="city">
+            <SelectValue placeholder="All cities" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All cities</SelectItem>
+            {cities.map(c => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="state">State</Label>
+        <Select value={state} onValueChange={setState}>
+          <SelectTrigger id="state">
+            <SelectValue placeholder="All states" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All states</SelectItem>
+            {states.map(s => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="status">Status</Label>
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger id="status">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All statuses</SelectItem>
+            {statuses.map(s => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2 md:col-span-2">
+        <div className="flex justify-between">
+          <Label>Value Range</Label>
+          <div className="text-sm text-muted-foreground">
+            {new Intl.NumberFormat('en-US', { 
+              style: 'currency', 
+              currency: 'USD',
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }).format(minValue || valueBounds.min)} - 
+            {new Intl.NumberFormat('en-US', { 
+              style: 'currency', 
+              currency: 'USD',
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }).format(maxValue || valueBounds.max)}
+          </div>
+        </div>
+        <Slider
+          defaultValue={[valueBounds.min, valueBounds.max]}
+          min={valueBounds.min}
+          max={valueBounds.max}
+          step={10000}
+          onValueChange={(value) => {
+            setMinValue(value[0]);
+            setMaxValue(value[1]);
+          }}
+          className="py-4"
+        />
+      </div>
+
+      <div className="md:col-span-3">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={resetFilters}
+          className="w-full"
+        >
+          Reset Filters
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Count active filters
+  const activeFilterCount = [
+    propertyType,
+    minValue,
+    maxValue,
+    status,
+    city,
+    state
+  ].filter(Boolean).length;
+
   return (
     <Card className="mb-6">
       <CardContent className="pt-4">
         <div className="flex flex-col space-y-4">
-          {/* Search and expand button */}
+          {/* Search and filter buttons */}
           <div className="flex gap-2">
             <div className="relative w-full">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -197,123 +339,64 @@ export function PropertyFilters({ onFilterChange, properties }: PropertyFiltersP
                 </button>
               )}
             </div>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={() => setExpanded(!expanded)}
-              className="shrink-0"
-            >
-              <Filter className="h-4 w-4 mr-1" />
-              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
+            
+            {/* Desktop filter toggle */}
+            {!isMobile && (
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => setExpanded(!expanded)}
+                className="shrink-0 relative"
+              >
+                <Filter className="h-4 w-4 mr-1" />
+                {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+            )}
+            
+            {/* Mobile filter sheet trigger */}
+            {isMobile && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    className="shrink-0 relative"
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                    {activeFilterCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Property Filters</SheetTitle>
+                    <SheetDescription>
+                      Filter properties based on criteria below
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="py-6">
+                    <FiltersForm />
+                  </div>
+                  <SheetFooter>
+                    <SheetClose asChild>
+                      <Button className="w-full">Apply Filters</Button>
+                    </SheetClose>
+                  </SheetFooter>
+                </SheetContent>
+              </Sheet>
+            )}
           </div>
 
-          {/* Advanced filters */}
-          {expanded && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-              <div className="space-y-2">
-                <Label htmlFor="propertyType">Property Type</Label>
-                <Select value={propertyType} onValueChange={setPropertyType}>
-                  <SelectTrigger id="propertyType">
-                    <SelectValue placeholder="All property types" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All property types</SelectItem>
-                    {propertyTypes.map(type => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Select value={city} onValueChange={setCity}>
-                  <SelectTrigger id="city">
-                    <SelectValue placeholder="All cities" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All cities</SelectItem>
-                    {cities.map(c => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="state">State</Label>
-                <Select value={state} onValueChange={setState}>
-                  <SelectTrigger id="state">
-                    <SelectValue placeholder="All states" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All states</SelectItem>
-                    {states.map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger id="status">
-                    <SelectValue placeholder="All statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All statuses</SelectItem>
-                    {statuses.map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <div className="flex justify-between">
-                  <Label>Value Range</Label>
-                  <div className="text-sm text-muted-foreground">
-                    {new Intl.NumberFormat('en-US', { 
-                      style: 'currency', 
-                      currency: 'USD',
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(minValue || valueBounds.min)} - 
-                    {new Intl.NumberFormat('en-US', { 
-                      style: 'currency', 
-                      currency: 'USD',
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(maxValue || valueBounds.max)}
-                  </div>
-                </div>
-                <Slider
-                  defaultValue={[valueBounds.min, valueBounds.max]}
-                  min={valueBounds.min}
-                  max={valueBounds.max}
-                  step={10000}
-                  onValueChange={(value) => {
-                    setMinValue(value[0]);
-                    setMaxValue(value[1]);
-                  }}
-                  className="py-4"
-                />
-              </div>
-
-              <div className="md:col-span-3">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={resetFilters}
-                  className="w-full md:w-auto"
-                >
-                  Reset Filters
-                </Button>
-              </div>
-            </div>
-          )}
+          {/* Desktop advanced filters */}
+          {!isMobile && expanded && <FiltersForm />}
         </div>
       </CardContent>
     </Card>

@@ -13,6 +13,7 @@ import {
   type McpFunction, type McpWorkflow, type McpExecution,
   type InsertMcpFunction, type InsertMcpWorkflow, type InsertMcpExecution
 } from "@shared/mcp-schema";
+import { bentonCountyProperties, bentonCountyTaxRates } from './data/benton-county-properties';
 
 export interface IStorage {
   // User operations
@@ -180,6 +181,16 @@ export class MemStorage implements IStorage {
       features: ["All features included", "Unlimited users", "Advanced reporting"],
       isActive: true
     });
+    
+    // Add Benton County WA properties
+    for (const property of bentonCountyProperties) {
+      this.createProperty(property);
+    }
+    
+    // Add Benton County WA tax rates
+    for (const taxRate of bentonCountyTaxRates) {
+      this.createTaxRate(taxRate);
+    }
   }
 
   // User operations

@@ -71,7 +71,7 @@ export async function registerPropertyComparisonWorkflow(mcpService: MCPService)
           filters: '$input.filters'
         },
         output: {
-          "filteredProperties": ""  // Entire result
+          "filteredProperties": "result"  // Map to result
         }
       },
       {
@@ -82,7 +82,7 @@ export async function registerPropertyComparisonWorkflow(mcpService: MCPService)
           factors: '$input.comparisonFactors'
         },
         output: {
-          "comparison": ""
+          "comparison": "result"
         }
       }
     ]

@@ -14,7 +14,7 @@ import { createPlanService } from './services/plan-service';
 import { createPropertyService } from './services/property-service';
 import { createMCPService } from './services/mcp-service';
 import { log } from './vite';
-import { devAuthBypass } from './middleware/dev-auth-bypass';
+// Auth bypass is now handled in auth-middleware.ts
 import { hashPassword, comparePassword, needsPasswordMigration } from './utils/password-utils';
 
 export async function setupServices(app: Express, server: Server): Promise<void> {
@@ -36,11 +36,8 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   app.use(passport.initialize());
   app.use(passport.session());
   
-  // Enable development authentication bypass if in development mode
-  if (process.env.NODE_ENV === 'development') {
-    app.use('/api', devAuthBypass);
-    log('Development mode: Authentication bypass enabled for API routes', 'dev-auth-bypass');
-  }
+  // Note: Authentication is now fully bypassed in auth-middleware.ts
+  // so we don't need the dev bypass middleware separately
 
   // Configure passport local strategy
   passport.use(
@@ -168,6 +165,20 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   
   // Auth routes
   app.get('/api/auth/status', (req, res) => {
+    // Development mode bypass
+    if (process.env.NODE_ENV === 'development') {
+      log(`DEV MODE: Auth bypass for /api/auth/status`, 'services-integration');
+      const adminUser = {
+        id: 1,
+        username: 'dev-admin',
+        email: 'dev@example.com',
+        role: 'admin',
+        tenantId: 1,
+        isAdmin: true
+      };
+      return res.json({ authenticated: true, user: adminUser });
+    }
+    
     if (req.isAuthenticated()) {
       res.json({ authenticated: true, user: req.user });
     } else {
@@ -190,6 +201,19 @@ export async function setupServices(app: Express, server: Server): Promise<void>
 
   // User routes
   app.get('/api/users/current', (req, res) => {
+    // Development mode bypass
+    if (process.env.NODE_ENV === 'development') {
+      log(`DEV MODE: Auth bypass for /api/users/current`, 'services-integration');
+      return res.json({
+        id: 1,
+        username: 'dev-admin',
+        email: 'dev@example.com',
+        role: 'admin',
+        tenantId: 1,
+        isAdmin: true
+      });
+    }
+    
     if (req.isAuthenticated()) {
       res.json(req.user);
     } else {
@@ -218,6 +242,18 @@ export async function setupServices(app: Express, server: Server): Promise<void>
 
   // Tenant routes
   app.get('/api/tenants', async (req, res) => {
+    // Development mode bypass
+    if (process.env.NODE_ENV === 'development') {
+      log(`DEV MODE: Auth bypass for /api/tenants`, 'services-integration');
+      try {
+        const tenants = await storage.getAllTenants();
+        return res.json(tenants);
+      } catch (error: any) {
+        log(`Legacy API - Error fetching tenants: ${error.message}`, 'routes');
+        return res.status(500).json({ message: 'Failed to fetch tenants' });
+      }
+    }
+    
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
@@ -281,6 +317,13 @@ export async function setupServices(app: Express, server: Server): Promise<void>
 
   // MCP admin routes
   app.get('/api/mcp/services', (req, res) => {
+    // Development mode bypass
+    if (process.env.NODE_ENV === 'development') {
+      log(`DEV MODE: Auth bypass for /api/mcp/services`, 'services-integration');
+      const serviceStatus = mcp.getServiceStatus();
+      return res.json(serviceStatus);
+    }
+    
     if (!req.isAuthenticated() || (req.user as any)?.role !== 'admin') {
       return res.status(403).json({ message: 'Forbidden' });
     }

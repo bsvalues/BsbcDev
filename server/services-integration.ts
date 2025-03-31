@@ -13,6 +13,7 @@ import { createUserService } from './services/user-service';
 import { createPlanService } from './services/plan-service';
 import { createPropertyService } from './services/property-service';
 import { log } from './vite';
+import { hashPassword, verifyPassword, needsPasswordMigration } from './utils/password-utils';
 
 export async function setupServices(app: Express, server: Server): Promise<void> {
   const MemoryStore = createMemoryStore(session);
@@ -39,13 +40,37 @@ export async function setupServices(app: Express, server: Server): Promise<void>
       try {
         const user = await storage.getUserByUsername(username);
         if (!user) {
+          log(`Authentication failed: Username '${username}' not found`, 'passport');
           return done(null, false, { message: 'Incorrect username' });
         }
-        if (user.password !== password) {
+        
+        let isValidPassword = false;
+        
+        // Check if the password needs migration (is stored in plaintext)
+        if (needsPasswordMigration(user.password)) {
+          // Temporary support for plaintext passwords during migration
+          isValidPassword = user.password === password;
+          
+          if (isValidPassword) {
+            // Migrate the plaintext password to a hashed one
+            log(`Migrating plaintext password for user: ${username}`, 'passport');
+            const hashedPassword = await hashPassword(password);
+            await storage.updateUser(user.id, { password: hashedPassword });
+          }
+        } else {
+          // Verify against hashed password
+          isValidPassword = await verifyPassword(password, user.password);
+        }
+        
+        if (!isValidPassword) {
+          log(`Authentication failed: Incorrect password for user '${username}'`, 'passport');
           return done(null, false, { message: 'Incorrect password' });
         }
+        
+        log(`Authentication successful for user: ${username}`, 'passport');
         return done(null, user);
       } catch (err: any) {
+        log(`Authentication error: ${err.message}`, 'passport');
         return done(err);
       }
     })

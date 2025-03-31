@@ -4,6 +4,8 @@ import { insertUserSchema } from '@shared/schema';
 import { ZodError } from 'zod';
 import { fromZodError } from 'zod-validation-error';
 import { log } from '../vite';
+import { hashPassword, verifyPassword, needsPasswordMigration } from '../utils/password-utils';
+import { formatError } from '../utils/error-handler';
 
 export class AuthService {
   private router: Router;
@@ -101,18 +103,23 @@ export class AuthService {
           return res.status(400).json({ message: 'Username already exists' });
         }
         
-        const user = await storage.createUser(userData);
+        // Hash the password before storing
+        const hashedPassword = await hashPassword(userData.password);
+        
+        const user = await storage.createUser({
+          ...userData,
+          password: hashedPassword
+        });
+        
+        // Create a sanitized user response without the password
+        const { password: _, ...userResponse } = user;
+        
         log(`User created: ${user.username}`, 'auth-service');
-        res.status(201).json(user);
-      } catch (error) {
-        if (error instanceof ZodError) {
-          const validationError = fromZodError(error);
-          log(`Validation error during registration: ${validationError.message}`, 'auth-service');
-          res.status(400).json({ message: validationError.message });
-        } else {
-          log(`Error during registration: ${error.message}`, 'auth-service');
-          res.status(500).json({ message: 'Internal server error' });
-        }
+        res.status(201).json(userResponse);
+      } catch (error: any) {
+        const formattedError = formatError(error);
+        log(`Error during registration: ${formattedError.message}`, 'auth-service');
+        res.status(formattedError.status).json(formattedError);
       }
     });
 
@@ -160,20 +167,28 @@ export class AuthService {
           return res.status(400).json({ message: 'Username already exists' });
         }
         
+        // Hash the password before storing
+        const hashedPassword = await hashPassword(password);
+        
         const userData = {
           username,
           email,
-          password,
+          password: hashedPassword,
           role: role || 'user',
           isDevUser: isDevUser === true
         };
         
         const user = await storage.createUser(userData);
+        
+        // Create a sanitized user response without the password
+        const { password: _, ...userResponse } = user;
+        
         log(`Development user created: ${user.username}`, 'auth-service');
-        res.status(201).json(user);
-      } catch (error) {
-        log(`Error creating development user: ${error.message}`, 'auth-service');
-        res.status(500).json({ message: 'Internal server error' });
+        res.status(201).json(userResponse);
+      } catch (error: any) {
+        const formattedError = formatError(error);
+        log(`Error creating development user: ${formattedError.message}`, 'auth-service');
+        res.status(formattedError.status).json(formattedError);
       }
     });
   }

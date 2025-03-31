@@ -217,6 +217,37 @@ export class PropertyService {
         res.status(500).json({ message: 'Failed to fetch tax rates' });
       }
     });
+    
+    // Compare properties
+    this.router.post('/compare', requireAuth, async (req: Request, res: Response) => {
+      try {
+        const { propertyIds, factors, includeAdvancedMetrics } = req.body;
+        
+        if (!Array.isArray(propertyIds) || propertyIds.length < 2) {
+          return res.status(400).json({ 
+            message: 'At least 2 property IDs are required for comparison' 
+          });
+        }
+        
+        // Import the MCP property integration service
+        const { calculatePropertyComparison } = await import('./mcp-property-integration');
+        
+        // Calculate property comparison
+        const comparisonResult = await calculatePropertyComparison({
+          propertyIds,
+          factors: factors || ['assessedValue', 'marketValue', 'taxableValue', 'yearBuilt'],
+          includeAdvancedMetrics: includeAdvancedMetrics || false
+        });
+        
+        res.json(comparisonResult);
+      } catch (error: any) {
+        log(`Error comparing properties: ${error.message}`, 'property-service');
+        res.status(500).json({ 
+          message: 'Failed to compare properties',
+          error: error.message
+        });
+      }
+    });
   }
 }
 

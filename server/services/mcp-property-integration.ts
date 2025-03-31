@@ -9,6 +9,7 @@ import { PropertyService } from './property-service';
 import { registerMcpFunction } from './mcp-functions';
 import { registerWorkflow } from './mcp-workflows';
 import { log } from '../vite';
+import { storage } from '../storage';
 
 /**
  * Register property filter function with MCP service
@@ -71,7 +72,7 @@ export async function registerPropertyComparisonWorkflow(mcpService: MCPService)
           filters: '$input.filters'
         },
         output: {
-          "filteredProperties": "result"  // Map to result
+          filteredProperties: "result"  // Map to result
         }
       },
       {
@@ -82,16 +83,138 @@ export async function registerPropertyComparisonWorkflow(mcpService: MCPService)
           factors: '$input.comparisonFactors'
         },
         output: {
-          "comparison": "result"
+          comparison: "result"
         }
       }
     ]
   };
 
-  // Register the workflow
-  registerWorkflow(propertyFilterComparisonWorkflow);
+  // Register the workflow with proper type casting
+  registerWorkflow(propertyFilterComparisonWorkflow as any);
   
   log('Registered MCP workflow: propertyFilterComparison', 'mcp-property-service');
+}
+
+/**
+ * Calculate detailed property comparison based on specified factors
+ */
+export async function calculatePropertyComparison(params: {
+  propertyIds: number[];
+  factors?: string[];
+  includeAdvancedMetrics?: boolean;
+}): Promise<any> {
+  const { propertyIds, factors = ['assessedValue', 'marketValue', 'taxableValue'], includeAdvancedMetrics = false } = params;
+  
+  if (!propertyIds || !Array.isArray(propertyIds) || propertyIds.length < 2) {
+    throw new Error('At least 2 property IDs are required for comparison');
+  }
+  
+  // Fetch property data
+  const properties = await Promise.all(
+    propertyIds.map(async (id) => {
+      const property = await storage.getProperty(id, -1); // Using -1 for default tenant in dev mode
+      if (!property) {
+        throw new Error(`Property with ID ${id} not found`);
+      }
+      return property;
+    })
+  );
+  
+  // Calculate comparisons between properties
+  const metrics: Record<string, any> = {};
+  
+  // Process each comparison factor
+  for (const factor of factors) {
+    const factorValues = properties.map((p: any) => {
+      // Handle nested properties (e.g., propertyDetails.marketValue)
+      if (factor.includes('.')) {
+        const parts = factor.split('.');
+        let value: any = p;
+        for (const part of parts) {
+          if (!value) return null;
+          value = (value as any)[part];
+        }
+        return value;
+      } 
+      
+      // Handle propertyDetails object
+      if (p.propertyDetails && typeof p.propertyDetails === 'object' && factor in (p.propertyDetails as any)) {
+        return (p.propertyDetails as any)[factor];
+      }
+      
+      // Access property using index signature
+      return (p as any)[factor];
+    });
+    
+    // Skip if we don't have at least two valid values
+    const validValues = factorValues.filter((v: any) => v !== null && v !== undefined);
+    if (validValues.length < 2) {
+      metrics[factor] = { incomplete: true, message: 'Insufficient data for comparison' };
+      continue;
+    }
+    
+    // Calculate basic metrics
+    const min = Math.min(...validValues as number[]);
+    const max = Math.max(...validValues as number[]);
+    const difference = max - min;
+    const percentageDifference = parseFloat(((difference / min) * 100).toFixed(2));
+    
+    metrics[factor] = {
+      values: factorValues,
+      min,
+      max,
+      difference,
+      percentageDifference,
+      incomplete: factorValues.some((v: any) => v === null || v === undefined)
+    };
+  }
+  
+  // Advanced metrics
+  let advancedMetrics = {};
+  if (includeAdvancedMetrics) {
+    // Calculate price per square foot
+    if (properties.every((p: any) => p.buildingArea && p.propertyDetails && (p.propertyDetails as any).marketValue)) {
+      const pricePerSqFt = properties.map((p: any) => 
+        (p.propertyDetails as any).marketValue / (p.buildingArea as number)
+      );
+      
+      // Calculate difference in price per square foot
+      const minPPSF = Math.min(...pricePerSqFt);
+      const maxPPSF = Math.max(...pricePerSqFt);
+      const ppsfDifference = maxPPSF - minPPSF;
+      const ppsfPercentageDiff = parseFloat(((ppsfDifference / minPPSF) * 100).toFixed(2));
+      
+      advancedMetrics = {
+        ...advancedMetrics,
+        pricePerSqFt,
+        pricePerSqFtDifference: ppsfDifference,
+        pricePerSqFtPercentageDiff: ppsfPercentageDiff
+      };
+    }
+    
+    // Calculate age-adjusted value (value relative to age)
+    if (properties.every((p: any) => p.yearBuilt && p.propertyDetails && (p.propertyDetails as any).marketValue)) {
+      const currentYear = new Date().getFullYear();
+      const ageAdjustedValues = properties.map((p: any) => {
+        const age = currentYear - (p.yearBuilt as number);
+        return {
+          age,
+          valuePerYearOfAge: (p.propertyDetails as any).marketValue / age
+        };
+      });
+      
+      advancedMetrics = {
+        ...advancedMetrics,
+        ageAdjustedValues
+      };
+    }
+  }
+  
+  return {
+    properties,
+    metrics,
+    ...(includeAdvancedMetrics ? { advancedMetrics } : {})
+  };
 }
 
 /**
@@ -109,95 +232,25 @@ export async function initializeMcpPropertyIntegration(
   registerMcpFunction('calculateComparison', async (params: {
     properties: any[];
     factors?: string[];
+    includeAdvancedMetrics?: boolean;
   }) => {
     const properties = params.properties;
     const factors = params.factors || ['marketValue', 'assessedValue', 'yearBuilt'];
+    const includeAdvancedMetrics = params.includeAdvancedMetrics || false;
     
     if (!properties || !Array.isArray(properties) || properties.length < 2) {
       throw new Error('At least 2 properties are required for comparison');
     }
     
-    // Calculate comparisons between properties
-    const results: Record<string, any> = {};
+    // Extract property IDs
+    const propertyIds = properties.map((p: any) => p.id);
     
-    // Process each comparison factor
-    for (const factor of factors) {
-      const values = properties.map(p => {
-        // Handle nested properties (e.g., propertyDetails.marketValue)
-        if (factor.includes('.')) {
-          const parts = factor.split('.');
-          let value = p;
-          for (const part of parts) {
-            if (!value) return null;
-            value = value[part];
-          }
-          return value;
-        }
-        return p[factor];
-      }).filter(v => v !== null && v !== undefined);
-      
-      // Calculate statistics
-      if (values.length > 0) {
-        const sum = values.reduce((a, b) => a + b, 0);
-        const avg = sum / values.length;
-        const min = Math.min(...values);
-        const max = Math.max(...values);
-        const range = max - min;
-        
-        results[factor] = {
-          values,
-          average: avg,
-          minimum: min,
-          maximum: max,
-          range,
-          count: values.length
-        };
-      }
-    }
-    
-    // If comparing exactly 2 properties, add direct comparisons
-    if (properties.length === 2) {
-      const [prop1, prop2] = properties;
-      
-      // Calculate specific differences between the two properties
-      const differences: Record<string, any> = {};
-      
-      for (const factor of factors) {
-        let value1, value2;
-        
-        // Handle nested properties
-        if (factor.includes('.')) {
-          const parts = factor.split('.');
-          value1 = prop1;
-          value2 = prop2;
-          
-          for (const part of parts) {
-            if (value1) value1 = value1[part];
-            if (value2) value2 = value2[part];
-          }
-        } else {
-          value1 = prop1[factor];
-          value2 = prop2[factor];
-        }
-        
-        if (value1 !== null && value1 !== undefined && 
-            value2 !== null && value2 !== undefined) {
-          differences[factor] = {
-            absolute: value2 - value1,
-            percentage: value1 !== 0 ? ((value2 - value1) / value1) * 100 : null,
-            ratio: value1 !== 0 ? value2 / value1 : null
-          };
-        }
-      }
-      
-      results.direct_comparison = {
-        property1: prop1.id,
-        property2: prop2.id,
-        differences
-      };
-    }
-    
-    return results;
+    // Use the enhanced property comparison function
+    return calculatePropertyComparison({
+      propertyIds,
+      factors,
+      includeAdvancedMetrics
+    });
   });
   
   log('MCP Property Integration initialized successfully', 'mcp-property-service');

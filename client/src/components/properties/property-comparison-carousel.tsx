@@ -30,25 +30,60 @@ import {
   Ruler,
   Hash,
   Tag,
-  ChevronRight
+  ChevronRight,
+  BarChart,
+  Layers
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+// Advanced metrics and comparison data types
+interface PropertyComparison {
+  metrics?: {
+    [key: string]: {
+      values: (number | null)[];
+      min: number;
+      max: number;
+      difference: number;
+      percentageDifference: number;
+      incomplete?: boolean;
+    }
+  };
+  advancedMetrics?: {
+    pricePerSqFt?: number[];
+    pricePerSqFtDifference?: number;
+    pricePerSqFtPercentageDiff?: number;
+    ageAdjustedValues?: {
+      age: number;
+      valuePerYearOfAge: number;
+    }[];
+  };
+}
 
 interface PropertyComparisonCarouselProps {
   properties: Property[];
   onViewDetails?: (property: Property) => void;
   onViewValuation?: (property: Property) => void;
+  showAdvancedMetrics?: boolean;
 }
 
 export function PropertyComparisonCarousel({
   properties,
   onViewDetails,
-  onViewValuation
+  onViewValuation,
+  showAdvancedMetrics = false
 }: PropertyComparisonCarouselProps) {
   const { toast } = useToast();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [api, setApi] = useState<any>();
+  const [comparisonData, setComparisonData] = useState<PropertyComparison | null>(null);
+  const [isLoadingComparison, setIsLoadingComparison] = useState(false);
 
   // Format currency values
   const formatCurrency = (value: number | null | undefined) => {
@@ -60,6 +95,56 @@ export function PropertyComparisonCarousel({
       maximumFractionDigits: 0,
     }).format(value);
   };
+  
+  // Format percentage values
+  const formatPercentage = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'N/A';
+    return `${value.toFixed(1)}%`;
+  };
+  
+  // Fetch comparison data for the properties
+  useEffect(() => {
+    // Only fetch comparison data if we have at least 2 properties
+    if (properties.length < 2) return;
+    
+    const fetchComparisonData = async () => {
+      setIsLoadingComparison(true);
+      try {
+        // Get property IDs for comparison
+        const propertyIds = properties.map(p => p.id);
+        
+        // Call the API to get comparison data
+        const response = await fetch('/api/properties/compare', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            propertyIds,
+            includeAdvancedMetrics: showAdvancedMetrics
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch comparison data');
+        }
+        
+        const data = await response.json();
+        setComparisonData(data);
+      } catch (error) {
+        console.error('Error fetching comparison data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load property comparison data',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoadingComparison(false);
+      }
+    };
+    
+    fetchComparisonData();
+  }, [properties, showAdvancedMetrics, toast]);
 
   // Handle carousel change
   const handleSelect = () => {
@@ -110,6 +195,115 @@ export function PropertyComparisonCarousel({
           </Badge>
         </div>
       </div>
+      
+      {/* Comparison Metrics Section - Only shown when we have comparison data */}
+      {properties.length > 1 && (
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BarChart className="h-5 w-5 text-primary" />
+              Property Comparison Metrics
+            </CardTitle>
+            <CardDescription>
+              Key metrics and differences between properties
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingComparison ? (
+              <div className="flex justify-center items-center h-24">
+                <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                <span className="ml-2 text-sm text-muted-foreground">Loading comparison data...</span>
+              </div>
+            ) : comparisonData?.metrics ? (
+              <div className="space-y-4">
+                {/* Assessed Value Comparison */}
+                {comparisonData.metrics.assessedValue && (
+                  <div className="border rounded-md p-3">
+                    <h4 className="text-sm font-medium mb-2 flex items-center">
+                      <DollarSign className="h-4 w-4 mr-1 text-primary" />
+                      Assessed Value Difference
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Difference</span>
+                        <span className="font-medium">{formatCurrency(comparisonData.metrics.assessedValue.difference)}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Percentage</span>
+                        <span className="font-medium">{formatPercentage(comparisonData.metrics.assessedValue.percentageDifference)}</span>
+                      </div>
+                      <div className="col-span-2 mt-1">
+                        <span className="text-xs text-muted-foreground block">Range</span>
+                        <span className="text-sm">{formatCurrency(comparisonData.metrics.assessedValue.min)} - {formatCurrency(comparisonData.metrics.assessedValue.max)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Market Value Comparison */}
+                {comparisonData.metrics.marketValue && (
+                  <div className="border rounded-md p-3">
+                    <h4 className="text-sm font-medium mb-2 flex items-center">
+                      <DollarSign className="h-4 w-4 mr-1 text-primary" />
+                      Market Value Difference
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Difference</span>
+                        <span className="font-medium">{formatCurrency(comparisonData.metrics.marketValue.difference)}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Percentage</span>
+                        <span className="font-medium">{formatPercentage(comparisonData.metrics.marketValue.percentageDifference)}</span>
+                      </div>
+                      <div className="col-span-2 mt-1">
+                        <span className="text-xs text-muted-foreground block">Range</span>
+                        <span className="text-sm">{formatCurrency(comparisonData.metrics.marketValue.min)} - {formatCurrency(comparisonData.metrics.marketValue.max)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Advanced Metrics */}
+                {showAdvancedMetrics && comparisonData.advancedMetrics?.pricePerSqFt && (
+                  <div className="border rounded-md p-3 bg-muted/30">
+                    <h4 className="text-sm font-medium mb-2 flex items-center">
+                      <Layers className="h-4 w-4 mr-1 text-primary" />
+                      Advanced Metrics
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Price per Sq Ft Range</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="font-medium cursor-help">
+                                ${Math.min(...comparisonData.advancedMetrics.pricePerSqFt).toFixed(2)} - 
+                                ${Math.max(...comparisonData.advancedMetrics.pricePerSqFt).toFixed(2)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Market value divided by building area</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Difference</span>
+                        <span className="font-medium">
+                          {formatPercentage(comparisonData.advancedMetrics.pricePerSqFtPercentageDiff)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No comparison data available</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
       
       <Carousel
         setApi={setApi}

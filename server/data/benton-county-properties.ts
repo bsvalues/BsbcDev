@@ -311,59 +311,54 @@ export const bentonCountyTaxRates = [
     zoneCode: "R1",
     propertyType: "residential",
     taxYear: 2023,
-    rate: 0.0123, // 1.23%
+    millageRate: 12.3, // $12.30 per $1000 assessed value (1.23%)
     effectiveDate: new Date("2023-01-01"),
     expirationDate: new Date("2023-12-31"),
-    description: "Residential Tax Rate - Benton County",
     status: "active",
-    notes: "Includes school district and city levies"
+    createdBy: 1
   },
   {
     tenantId: 1,
     zoneCode: "R2",
     propertyType: "residential",
     taxYear: 2023,
-    rate: 0.0125, // 1.25%
+    millageRate: 12.5, // $12.50 per $1000 assessed value (1.25%)
     effectiveDate: new Date("2023-01-01"),
     expirationDate: new Date("2023-12-31"),
-    description: "Residential Tax Rate - Benton County",
     status: "active",
-    notes: "Includes school district and city levies"
+    createdBy: 1
   },
   {
     tenantId: 1,
     zoneCode: "C1",
     propertyType: "commercial",
     taxYear: 2023,
-    rate: 0.0145, // 1.45%
+    millageRate: 14.5, // $14.50 per $1000 assessed value (1.45%)
     effectiveDate: new Date("2023-01-01"),
     expirationDate: new Date("2023-12-31"),
-    description: "Commercial Tax Rate - Benton County",
     status: "active",
-    notes: "Includes business district assessments"
+    createdBy: 1
   },
   {
     tenantId: 1,
     zoneCode: "C2",
     propertyType: "commercial",
     taxYear: 2023,
-    rate: 0.0148, // 1.48%
+    millageRate: 14.8, // $14.80 per $1000 assessed value (1.48%)
     effectiveDate: new Date("2023-01-01"),
     expirationDate: new Date("2023-12-31"),
-    description: "Commercial Tax Rate - Benton County",
     status: "active",
-    notes: "Includes business district assessments"
+    createdBy: 1
   },
   {
     tenantId: 1,
     zoneCode: "I1",
     propertyType: "industrial",
     taxYear: 2023,
-    rate: 0.0156, // 1.56%
+    millageRate: 15.6, // $15.60 per $1000 assessed value (1.56%)
     effectiveDate: new Date("2023-01-01"),
     expirationDate: new Date("2023-12-31"),
-    description: "Industrial Tax Rate - Benton County",
     status: "active",
-    notes: "Includes industrial development levies"
+    createdBy: 1
   }
 ];

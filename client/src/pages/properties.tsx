@@ -24,7 +24,7 @@ export default function PropertiesPage() {
   const [selectedPropertiesForComparison, setSelectedPropertiesForComparison] = useState<Property[]>([]);
 
   const { data: properties, isLoading, refetch } = useQuery<Property[]>({
-    queryKey: ['/api-gateway/properties'],
+    queryKey: ['/internal/properties'],
     refetchOnWindowFocus: false,
   });
 

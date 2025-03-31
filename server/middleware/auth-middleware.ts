@@ -6,30 +6,26 @@ import { formatError } from '../utils/error-handler';
  * Middleware to check if user is authenticated
  * Redirects to login page or returns 401 for API requests if not authenticated
  * 
- * In development mode, this will automatically bypass authentication checks
- * and create a mock admin user
+ * In development mode, this will completely bypass authentication checks
+ * and always add a mock admin user to the request
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  // Development mode bypass
+  // Development mode bypass - ALWAYS allow access without checking anything
   if (process.env.NODE_ENV === 'development') {
-    // Create a mock user if not already authenticated
-    if (!req.isAuthenticated()) {
-      log(`DEV MODE: Auto-creating authenticated admin user for ${req.path}`, 'auth-middleware');
-      
-      // Create a mock user object for the request
-      req.user = {
-        id: 1,
-        username: 'dev-admin',
-        email: 'dev@example.com',
-        role: 'admin',
-        tenantId: 1,
-        isAdmin: true
-      };
-      
-      // Override isAuthenticated method
-      const originalIsAuthenticated = req.isAuthenticated?.bind(req) || (() => false);
-      req.isAuthenticated = function() { return true; } as any;
-    }
+    log(`DEV MODE: Complete auth bypass for ${req.path}`, 'auth-middleware');
+    
+    // Always create a mock user for the request
+    req.user = {
+      id: 1,
+      username: 'dev-admin',
+      email: 'dev@example.com',
+      role: 'admin',
+      tenantId: 1,
+      isAdmin: true
+    };
+    
+    // Override isAuthenticated method to always return true
+    req.isAuthenticated = function() { return true; } as any;
     
     return next();
   }
@@ -58,12 +54,27 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
  * Middleware to check if user has admin role
  * Returns 403 if user is not an admin
  * 
- * In development mode, this will automatically bypass admin role checks
+ * In development mode, this will completely bypass admin role checks
+ * and always add a mock admin user to the request
  */
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  // Development mode bypass
+  // Development mode bypass - ALWAYS allow access without checking anything
   if (process.env.NODE_ENV === 'development') {
-    log(`DEV MODE: Admin access granted for ${req.path}`, 'auth-middleware');
+    log(`DEV MODE: Complete admin access granted for ${req.path}`, 'auth-middleware');
+    
+    // Always create a mock admin user for the request
+    req.user = {
+      id: 1,
+      username: 'dev-admin',
+      email: 'dev@example.com',
+      role: 'admin',
+      tenantId: 1,
+      isAdmin: true
+    };
+    
+    // Override isAuthenticated method to always return true
+    req.isAuthenticated = function() { return true; } as any;
+    
     return next();
   }
   
@@ -88,12 +99,27 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
  * Middleware to check if user has specific tenant access
  * Returns 403 if user doesn't have access to the requested tenant
  * 
- * In development mode, this will automatically bypass tenant access checks
+ * In development mode, this will completely bypass tenant access checks
+ * and always add a mock admin user to the request with full tenant access
  */
 export function requireTenantAccess(req: Request, res: Response, next: NextFunction): void {
-  // Development mode bypass
+  // Development mode bypass - ALWAYS allow access without checking anything
   if (process.env.NODE_ENV === 'development') {
-    log(`DEV MODE: Tenant access granted for ${req.path}`, 'auth-middleware');
+    log(`DEV MODE: Complete tenant access granted for ${req.path}`, 'auth-middleware');
+    
+    // Always create a mock admin user for the request with access to all tenants
+    req.user = {
+      id: 1,
+      username: 'dev-admin',
+      email: 'dev@example.com',
+      role: 'admin',
+      tenantId: 1,
+      isAdmin: true
+    };
+    
+    // Override isAuthenticated method to always return true
+    req.isAuthenticated = function() { return true; } as any;
+    
     return next();
   }
   

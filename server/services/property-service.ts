@@ -220,6 +220,6 @@ export class PropertyService {
   }
 }
 
-export function createPropertyService(): PropertyService {
-  return new PropertyService();
+export function createPropertyService(customRepository?: IStorage): PropertyService {
+  return new PropertyService(customRepository);
 }

@@ -11,6 +11,7 @@ import { PropertyList } from '@/components/properties/property-list';
 import { PropertyDetail } from '@/components/properties/property-detail';
 import { PropertyValuation } from '@/components/properties/property-valuation';
 import { PropertyValueChart } from '@/components/properties/property-value-chart';
+import { PropertyComparisonCarousel } from '@/components/properties/property-comparison-carousel';
 import { TaxLevyForm } from '@/components/properties/tax-levy-form';
 import Sidebar from "@/components/ui/sidebar";
 
@@ -241,6 +242,32 @@ export default function PropertiesPage() {
             <TabsContent value="trends" className="mt-6">
               {selectedProperty && (
                 <div className="space-y-6">
+                  {/* Property Comparison Carousel */}
+                  {selectedPropertiesForComparison.length > 1 && (
+                    <Card className="mb-6">
+                      <CardHeader>
+                        <CardTitle>Property Comparison</CardTitle>
+                        <CardDescription>
+                          Animated comparison of selected properties
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <PropertyComparisonCarousel
+                          properties={selectedPropertiesForComparison}
+                          onViewDetails={(property) => {
+                            setSelectedProperty(property);
+                            setActiveTab('detail');
+                          }}
+                          onViewValuation={(property) => {
+                            setSelectedProperty(property);
+                            setActiveTab('valuation');
+                          }}
+                        />
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Value Trends Chart */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Value Trends Analysis</CardTitle>

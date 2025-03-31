@@ -3,6 +3,12 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { errorHandler, notFoundHandler } from "./utils/error-handler";
 
+// Set environment to development if not set
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'development';
+  log('NODE_ENV not set, defaulting to development mode');
+}
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

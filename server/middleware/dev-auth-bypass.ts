@@ -1,11 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { log } from '../vite';
 
-// Define an interface to match Express's type for authenticated requests
-interface AuthenticatedRequest extends Request {
-  user: any;
-  isAuthenticated(): boolean;
-}
+// No need to define a separate interface, we'll use Request directly
 
 /**
  * Development authentication bypass middleware
@@ -21,17 +17,16 @@ export function devAuthBypass(req: Request, res: Response, next: NextFunction): 
     req.user = {
       id: 1,
       username: 'dev-admin',
+      email: 'dev@example.com',
       role: 'admin',
-      tenantId: 1
+      tenantId: 1,
+      isAdmin: true
     };
     
-    // Set req.isAuthenticated to return true
+    // Override isAuthenticated method
+    // We need to redefine it as a function that returns true
     const originalIsAuthenticated = req.isAuthenticated;
-    
-    // Create a proper TypeScript type predicate function
-    req.isAuthenticated = function(this: AuthenticatedRequest): this is AuthenticatedRequest {
-      return true;
-    };
+    req.isAuthenticated = function() { return true; };
     
     // Continue with request
     next();

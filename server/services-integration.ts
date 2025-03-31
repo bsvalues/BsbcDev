@@ -35,6 +35,12 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   // Initialize passport
   app.use(passport.initialize());
   app.use(passport.session());
+  
+  // Enable development authentication bypass if in development mode
+  if (process.env.NODE_ENV === 'development') {
+    app.use('/api', devAuthBypass);
+    log('Development mode: Authentication bypass enabled for API routes', 'dev-auth-bypass');
+  }
 
   // Configure passport local strategy
   passport.use(

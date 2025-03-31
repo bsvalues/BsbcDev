@@ -40,16 +40,11 @@ export function AutoLoginConfig() {
   };
   
   const handleSaveConfiguration = () => {
-    // Update the auto-login configuration
-    if (autoLoginEnabled) {
-      enableAutoLogin(currentUser?.id?.toString());
-    } else {
-      disableAutoLogin();
-    }
+    // Authentication bypass is already active in development mode
     
     toast({
-      title: "Configuration Saved",
-      description: `Auto-login ${autoLoginEnabled ? "enabled" : "disabled"} for development environment`,
+      title: "Development Mode Active",
+      description: "Authentication bypass is already active with the dev-admin user",
       variant: "default",
     });
     
@@ -60,54 +55,57 @@ export function AutoLoginConfig() {
   };
   
   const handleTestAutoLogin = () => {
-    testAutoLogin();
-    
-    if (autoLoginEnabled) {
-      toast({
-        title: "Auto-login Test",
-        description: "Auto-login test initiated",
-        variant: "default",
+    // Make a test API call to verify authentication
+    fetch('/api/users/current')
+      .then(response => response.json())
+      .then(data => {
+        toast({
+          title: "Authentication Test",
+          description: `Successfully authenticated as ${data.username} with role ${data.role}`,
+          variant: "default",
+        });
+      })
+      .catch(error => {
+        toast({
+          title: "Authentication Error",
+          description: "Failed to authenticate: " + error.message,
+          variant: "destructive",
+        });
       });
-    } else {
-      toast({
-        title: "Auto-login Disabled",
-        description: "Auto-login is currently disabled",
-        variant: "destructive",
-      });
-    }
   };
 
   return (
     <section id="autologin" className="mb-8">
       <div className="bg-white p-6 rounded-lg shadow-sm">
-        <h2 className="text-2xl font-semibold mb-4">Auto-Login Configuration</h2>
-        <p className="mb-4">Configure development auto-login to bypass authentication in development mode.</p>
+        <h2 className="text-2xl font-semibold mb-4">Development Authentication</h2>
+        <p className="mb-4">The system has the following authentication options for development:</p>
         
-        <div className="bg-yellow-50 border-l-4 border-warning p-4 mb-4">
+        <div className="bg-green-50 border-l-4 border-success p-4 mb-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <i className="fas fa-exclamation-triangle text-warning"></i>
+              <i className="fas fa-check-circle text-success"></i>
             </div>
             <div className="ml-3">
               <p className="text-sm text-dark-medium">
-                <strong>Security Warning:</strong> Auto-login functionality should only be enabled in local development environments. Never enable in production.
+                <strong>Authentication Bypass Active:</strong> The application is running in development mode with automatic authentication bypass enabled. This means all API requests will be automatically authenticated with a development admin user.
               </p>
             </div>
           </div>
         </div>
         
-        <h3 className="text-lg font-medium mb-2">Configuration Steps</h3>
+        <h3 className="text-lg font-medium mb-2">Available Options</h3>
         <ol className="list-decimal list-inside space-y-2 mb-4">
-          <li>Add the DEV_AUTO_LOGIN flag to your .env file</li>
-          <li>Create a development user account with appropriate permissions</li>
-          <li>Configure the user ID for auto-login in .env</li>
+          <li>Authentication Bypass: Automatically logs in all API requests (currently active)</li>
+          <li>Auto-Login: Configure specific user credentials in environment variables</li>
+          <li>Manual Login: Disable development authentication and use standard login</li>
         </ol>
         
         <div className="code-block mb-4 bg-[#f5f5f5] rounded-md p-4 font-mono overflow-x-auto">
           <pre>
-            <span className="text-green-600"># Add to your .env file</span>{"\n"}
-            DEV_AUTO_LOGIN=true{"\n"}
-            DEV_USER_ID=1
+            <span className="text-green-600"># The dev auth bypass is active with these credentials:</span>{"\n"}
+            Username: dev-admin{"\n"}
+            Role: admin{"\n"}
+            Tenant ID: 1
           </pre>
         </div>
         

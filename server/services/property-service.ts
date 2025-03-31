@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { storage } from '../storage';
+import { storage, IStorage } from '../storage';
 import { fromZodError } from 'zod-validation-error';
 import { ZodError } from 'zod';
 import { insertPropertySchema } from '@shared/schema';
@@ -9,14 +9,37 @@ import { log } from '../vite';
 
 export class PropertyService {
   private router: Router;
+  private repository: IStorage;
 
-  constructor() {
+  constructor(repository?: IStorage) {
     this.router = Router();
+    this.repository = repository || storage;
     this.setupRoutes();
   }
 
   public getRouter(): Router {
     return this.router;
+  }
+  
+  /**
+   * Get all properties for a tenant
+   */
+  public async getProperties(tenantId: number) {
+    return this.repository.getAllProperties(tenantId);
+  }
+  
+  /**
+   * Get a property by ID
+   */
+  public async getProperty(propertyId: number, tenantId: number) {
+    return this.repository.getProperty(propertyId, tenantId);
+  }
+  
+  /**
+   * Calculate property valuation
+   */
+  public async calculateValuation(propertyId: number, method: string, date: Date) {
+    return this.repository.calculatePropertyValuation(propertyId, method, date);
   }
 
   private setupRoutes(): void {
@@ -29,7 +52,7 @@ export class PropertyService {
     this.router.get('/', requireAuth, async (req: Request, res: Response) => {
       try {
         const tenantId = (req.user as any)?.tenantId;
-        const properties = await storage.getAllProperties(tenantId);
+        const properties = await this.getProperties(tenantId);
         res.json(properties);
       } catch (error: any) {
         log(`Error fetching properties: ${error.message}`, 'property-service');
@@ -47,7 +70,7 @@ export class PropertyService {
       try {
         const propertyId = parseInt(req.params.id, 10);
         const tenantId = (req.user as any)?.tenantId;
-        const property = await storage.getProperty(propertyId, tenantId);
+        const property = await this.getProperty(propertyId, tenantId);
         
         if (!property) {
           return res.status(404).json({ message: 'Property not found' });
@@ -73,7 +96,7 @@ export class PropertyService {
           createdBy: userId
         });
         
-        const property = await storage.createProperty(propertyData);
+        const property = await this.repository.createProperty(propertyData);
         res.status(201).json(property);
       } catch (error: any) {
         if (error instanceof ZodError) {
@@ -93,7 +116,7 @@ export class PropertyService {
         const tenantId = (req.user as any)?.tenantId;
         
         // Check if property exists and belongs to tenant
-        const property = await storage.getProperty(propertyId, tenantId);
+        const property = await this.getProperty(propertyId, tenantId);
         
         if (!property) {
           return res.status(404).json({ message: 'Property not found' });
@@ -101,7 +124,7 @@ export class PropertyService {
         
         // Validate update data (partial)
         const propertyUpdate = insertPropertySchema.partial().parse(req.body);
-        const updatedProperty = await storage.updateProperty(propertyId, propertyUpdate);
+        const updatedProperty = await this.repository.updateProperty(propertyId, propertyUpdate);
         
         res.json(updatedProperty);
       } catch (error: any) {
@@ -122,7 +145,7 @@ export class PropertyService {
         const tenantId = (req.user as any)?.tenantId;
         
         // Check if property exists and belongs to tenant
-        const property = await storage.getProperty(propertyId, tenantId);
+        const property = await this.getProperty(propertyId, tenantId);
         
         if (!property) {
           return res.status(404).json({ message: 'Property not found' });
@@ -135,7 +158,7 @@ export class PropertyService {
         } = req.body;
         
         // Calculate valuation (this would implement your valuation algorithms)
-        const valuation = await storage.calculatePropertyValuation(
+        const valuation = await this.calculateValuation(
           propertyId, 
           valuationMethod,
           assessmentDate
@@ -156,7 +179,7 @@ export class PropertyService {
         const userId = (req.user as any)?.id;
         
         // Check if property exists and belongs to tenant
-        const property = await storage.getProperty(propertyId, tenantId);
+        const property = await this.getProperty(propertyId, tenantId);
         
         if (!property) {
           return res.status(404).json({ message: 'Property not found' });
@@ -175,7 +198,7 @@ export class PropertyService {
           submittedAt: new Date()
         };
         
-        const appeal = await storage.createPropertyAppeal(appealData);
+        const appeal = await this.repository.createPropertyAppeal(appealData);
         res.status(201).json(appeal);
       } catch (error: any) {
         console.error('Error submitting property appeal:', error);
@@ -187,7 +210,7 @@ export class PropertyService {
     this.router.get('/tax-rates', requireAuth, async (req: Request, res: Response) => {
       try {
         const tenantId = (req.user as any)?.tenantId;
-        const taxRates = await storage.getTaxRates(tenantId);
+        const taxRates = await this.repository.getTaxRates(tenantId);
         res.json(taxRates);
       } catch (error: any) {
         console.error('Error fetching tax rates:', error);

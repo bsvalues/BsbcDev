@@ -47,6 +47,15 @@ export class MCPService {
   public getRouter(): Router {
     return this.router;
   }
+  
+  // Accessor methods for testing
+  public getFunctionByName(name: string): Function | undefined {
+    return this.registeredFunctions.get(name);
+  }
+  
+  public async getWorkflowByName(name: string): Promise<McpWorkflow | undefined> {
+    return storage.getMcpWorkflowByName(name);
+  }
 
   private setupDefaultFunctions() {
     // Register default system functions
@@ -86,12 +95,19 @@ export class MCPService {
     });
   }
 
-  private registerSystemFunction(name: string, handler: Function): void {
+  // Made public for testing purposes
+  public registerFunction(name: string, handler: Function): void {
     this.registeredFunctions.set(name, handler);
+    log(`Registered function: ${name}`, 'mcp-service');
+  }
+
+  private registerSystemFunction(name: string, handler: Function): void {
+    this.registerFunction(name, handler);
     log(`Registered system function: ${name}`, 'mcp-service');
   }
 
-  private async executeFunction(functionName: string, parameters: any): Promise<any> {
+  // Made public for testing purposes
+  public async executeFunction(functionName: string, parameters: any): Promise<any> {
     const functionHandler = this.registeredFunctions.get(functionName);
     
     if (!functionHandler) {
@@ -107,7 +123,8 @@ export class MCPService {
     }
   }
 
-  private async executeWorkflow(workflow: McpWorkflow, inputs: any): Promise<any> {
+  // Made public for testing purposes
+  public async executeWorkflow(workflow: McpWorkflow, inputs: any): Promise<any> {
     try {
       log(`Starting workflow execution: ${workflow.name}`, 'mcp-service');
       

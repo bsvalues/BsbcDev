@@ -14,6 +14,7 @@ import { createPlanService } from './services/plan-service';
 import { createPropertyService } from './services/property-service';
 import { createMCPService } from './services/mcp-service';
 import { log } from './vite';
+import { devAuthBypass } from './middleware/dev-auth-bypass';
 import { hashPassword, comparePassword, needsPasswordMigration } from './utils/password-utils';
 
 export async function setupServices(app: Express, server: Server): Promise<void> {
@@ -119,7 +120,36 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   app.use('/internal/users', userService.getRouter());
   app.use('/internal/plans', planService.getRouter());
   app.use('/internal/properties', propertyService.getRouter());
+  
+  // Register the MCP service
   app.use('/internal/mcp', mcpService.getRouter());
+  
+  // Add a test route for development that doesn't require authentication
+  if (process.env.NODE_ENV === 'development') {
+    app.post('/test-api/mcp/workflows/:name/execute', async (req, res) => {
+      try {
+        const { name } = req.params;
+        log(`TEST API - Executing workflow: ${name} (no auth required)`, 'services-integration');
+        
+        // Get workflow from storage
+        const workflow = await storage.getMcpWorkflowByName(name);
+        
+        if (!workflow) {
+          return res.status(404).json({ error: `Workflow '${name}' not found` });
+        }
+        
+        // Execute the workflow directly using the MCP service
+        const result = await mcpService.executeWorkflow(workflow, req.body);
+        
+        res.json(result);
+      } catch (error: any) {
+        log(`TEST API - Error executing workflow: ${error.message}`, 'services-integration');
+        res.status(500).json({ error: error.message });
+      }
+    });
+    
+    log('Development mode: Test API routes enabled for MCP service', 'services-integration');
+  }
 
   // Register API Gateway routes
   app.use('/api-gateway', apiGateway.getRouter());
@@ -352,6 +382,67 @@ export async function setupServices(app: Express, server: Server): Promise<void>
     } catch (error: any) {
       log(`Error executing MCP function: ${error.message}`, 'routes');
       res.status(500).json({ message: 'Failed to execute MCP function' });
+    }
+  });
+  
+  // Add test workflow execution endpoint for development only
+  if (process.env.NODE_ENV === 'development') {
+    app.post('/api/mcp/test/workflows/:name/execute', async (req, res) => {
+      try {
+        log(`Legacy API - Executing test workflow: ${req.params.name}`, 'routes');
+        
+        const response = await fetch(`http://localhost:5000/internal/mcp/test/workflows/${req.params.name}/execute`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(req.body),
+        });
+        
+        const data = await response.json();
+        res.status(response.status).json(data);
+      } catch (error: any) {
+        log(`Error executing test MCP workflow: ${error.message}`, 'routes');
+        res.status(500).json({ message: 'Failed to execute test MCP workflow' });
+      }
+    });
+  }
+  
+  // Regular workflow execution endpoint with authentication
+  app.post('/api/mcp/workflows/:name/execute', async (req, res) => {
+    try {
+      log(`Legacy API - Executing workflow: ${req.params.name}`, 'routes');
+      
+      // For development/testing only - create a temporary user session if not authenticated
+      let authenticated = req.isAuthenticated();
+      if (!authenticated && process.env.NODE_ENV === 'development') {
+        log('Dev mode - Creating temporary user session for workflow execution', 'routes');
+        await new Promise<void>((resolve) => {
+          req.login({ id: 1, role: 'admin', tenantId: 1 }, () => {
+            resolve();
+          });
+        });
+        authenticated = true;
+      }
+      
+      if (!authenticated) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      
+      const response = await fetch(`http://localhost:5000/internal/mcp/workflows/${req.params.name}/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': req.headers.cookie || ''
+        },
+        body: JSON.stringify(req.body),
+      });
+      
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error: any) {
+      log(`Error executing MCP workflow: ${error.message}`, 'routes');
+      res.status(500).json({ message: 'Failed to execute MCP workflow' });
     }
   });
 

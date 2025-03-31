@@ -4,7 +4,7 @@ import { insertUserSchema } from '@shared/schema';
 import { ZodError } from 'zod';
 import { fromZodError } from 'zod-validation-error';
 import { log } from '../vite';
-import { hashPassword, verifyPassword, needsPasswordMigration } from '../utils/password-utils';
+import { hashPassword, comparePassword, needsPasswordMigration } from '../utils/password-utils';
 import { formatError } from '../utils/error-handler';
 
 export class AuthService {

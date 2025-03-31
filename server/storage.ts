@@ -9,6 +9,11 @@ import {
   taxRates, type TaxRate, type InsertTaxRate
 } from "@shared/schema";
 
+import {
+  type McpFunction, type McpWorkflow, type McpExecution,
+  type InsertMcpFunction, type InsertMcpWorkflow, type InsertMcpExecution
+} from "@shared/mcp-schema";
+
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -58,6 +63,25 @@ export interface IStorage {
   getTaxRates(tenantId: number): Promise<TaxRate[]>;
   createTaxRate(taxRate: InsertTaxRate): Promise<TaxRate>;
   updateTaxRate(id: number, taxRate: Partial<InsertTaxRate>): Promise<TaxRate | undefined>;
+
+  // MCP Function operations
+  getMcpFunction(id: number): Promise<McpFunction | undefined>;
+  getMcpFunctionByName(name: string): Promise<McpFunction | undefined>;
+  getAllMcpFunctions(): Promise<McpFunction[]>;
+  createMcpFunction(function_: any): Promise<McpFunction>;
+  updateMcpFunction(id: number, function_: Partial<any>): Promise<McpFunction | undefined>;
+  
+  // MCP Workflow operations
+  getMcpWorkflow(id: number): Promise<McpWorkflow | undefined>;
+  getMcpWorkflowByName(name: string): Promise<McpWorkflow | undefined>;
+  getAllMcpWorkflows(): Promise<McpWorkflow[]>;
+  createMcpWorkflow(workflow: any): Promise<McpWorkflow>;
+  updateMcpWorkflow(id: number, workflow: Partial<any>): Promise<McpWorkflow | undefined>;
+  
+  // MCP Execution operations
+  getMcpExecution(id: number): Promise<McpExecution | undefined>;
+  createMcpExecution(execution: any): Promise<McpExecution>;
+  updateMcpExecution(id: number, execution: Partial<any>): Promise<McpExecution | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -78,6 +102,14 @@ export class MemStorage implements IStorage {
   private currentPropertyValuationId: number;
   private currentPropertyAppealId: number;
   private currentTaxRateId: number;
+  
+  // MCP private properties
+  private mcpFunctions: Map<number, McpFunction>;
+  private mcpWorkflows: Map<number, McpWorkflow>;
+  private mcpExecutions: Map<number, McpExecution>;
+  private currentMcpFunctionId: number;
+  private currentMcpWorkflowId: number;
+  private currentMcpExecutionId: number;
 
   constructor() {
     this.users = new Map();
@@ -89,6 +121,11 @@ export class MemStorage implements IStorage {
     this.propertyAppeals = new Map();
     this.taxRates = new Map();
     
+    // Initialize MCP Maps
+    this.mcpFunctions = new Map();
+    this.mcpWorkflows = new Map();
+    this.mcpExecutions = new Map();
+    
     this.currentUserId = 1;
     this.currentTenantId = 1;
     this.currentSubscriptionId = 1;
@@ -97,6 +134,9 @@ export class MemStorage implements IStorage {
     this.currentPropertyValuationId = 1;
     this.currentPropertyAppealId = 1;
     this.currentTaxRateId = 1;
+    this.currentMcpFunctionId = 1;
+    this.currentMcpWorkflowId = 1;
+    this.currentMcpExecutionId = 1;
     
     // Create initial dev user
     this.createUser({
@@ -482,6 +522,118 @@ export class MemStorage implements IStorage {
     };
     this.taxRates.set(id, updatedTaxRate);
     return updatedTaxRate;
+  }
+  
+  // MCP Function operations
+  async getMcpFunction(id: number): Promise<McpFunction | undefined> {
+    return this.mcpFunctions.get(id);
+  }
+
+  async getMcpFunctionByName(name: string): Promise<McpFunction | undefined> {
+    return Array.from(this.mcpFunctions.values()).find(
+      (func) => func.name === name
+    );
+  }
+
+  async getAllMcpFunctions(): Promise<McpFunction[]> {
+    return Array.from(this.mcpFunctions.values());
+  }
+
+  async createMcpFunction(function_: InsertMcpFunction): Promise<McpFunction> {
+    const id = this.currentMcpFunctionId++;
+    const now = new Date();
+    const mcpFunction: McpFunction = {
+      ...function_,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.mcpFunctions.set(id, mcpFunction);
+    return mcpFunction;
+  }
+
+  async updateMcpFunction(id: number, functionUpdate: Partial<InsertMcpFunction>): Promise<McpFunction | undefined> {
+    const existingFunction = this.mcpFunctions.get(id);
+    if (!existingFunction) return undefined;
+    
+    const updatedFunction = {
+      ...existingFunction,
+      ...functionUpdate,
+      updatedAt: new Date()
+    };
+    this.mcpFunctions.set(id, updatedFunction);
+    return updatedFunction;
+  }
+  
+  // MCP Workflow operations
+  async getMcpWorkflow(id: number): Promise<McpWorkflow | undefined> {
+    return this.mcpWorkflows.get(id);
+  }
+
+  async getMcpWorkflowByName(name: string): Promise<McpWorkflow | undefined> {
+    return Array.from(this.mcpWorkflows.values()).find(
+      (workflow) => workflow.name === name
+    );
+  }
+
+  async getAllMcpWorkflows(): Promise<McpWorkflow[]> {
+    return Array.from(this.mcpWorkflows.values());
+  }
+
+  async createMcpWorkflow(workflow: InsertMcpWorkflow): Promise<McpWorkflow> {
+    const id = this.currentMcpWorkflowId++;
+    const now = new Date();
+    const mcpWorkflow: McpWorkflow = {
+      ...workflow,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.mcpWorkflows.set(id, mcpWorkflow);
+    return mcpWorkflow;
+  }
+
+  async updateMcpWorkflow(id: number, workflowUpdate: Partial<InsertMcpWorkflow>): Promise<McpWorkflow | undefined> {
+    const existingWorkflow = this.mcpWorkflows.get(id);
+    if (!existingWorkflow) return undefined;
+    
+    const updatedWorkflow = {
+      ...existingWorkflow,
+      ...workflowUpdate,
+      updatedAt: new Date()
+    };
+    this.mcpWorkflows.set(id, updatedWorkflow);
+    return updatedWorkflow;
+  }
+  
+  // MCP Execution operations
+  async getMcpExecution(id: number): Promise<McpExecution | undefined> {
+    return this.mcpExecutions.get(id);
+  }
+
+  async createMcpExecution(execution: InsertMcpExecution): Promise<McpExecution> {
+    const id = this.currentMcpExecutionId++;
+    const now = new Date();
+    const mcpExecution: McpExecution = {
+      ...execution,
+      id,
+      startedAt: now,
+      completedAt: null
+    };
+    this.mcpExecutions.set(id, mcpExecution);
+    return mcpExecution;
+  }
+
+  async updateMcpExecution(id: number, executionUpdate: Partial<InsertMcpExecution>): Promise<McpExecution | undefined> {
+    const existingExecution = this.mcpExecutions.get(id);
+    if (!existingExecution) return undefined;
+    
+    const updatedExecution = {
+      ...existingExecution,
+      ...executionUpdate
+    };
+    this.mcpExecutions.set(id, updatedExecution);
+    return updatedExecution;
   }
 }
 

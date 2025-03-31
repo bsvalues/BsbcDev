@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { errorHandlerMiddleware } from "./utils/error-handler";
+import { errorHandler, notFoundHandler } from "./utils/error-handler";
 
 const app = express();
 app.use(express.json());
@@ -41,7 +41,10 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   // Use the centralized error handler middleware
-  app.use(errorHandlerMiddleware);
+  app.use(errorHandler);
+  
+  // Add 404 handler for routes that don't match any defined routes
+  app.use(notFoundHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route

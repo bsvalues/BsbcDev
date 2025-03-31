@@ -12,8 +12,9 @@ import { createSubscriptionService } from './services/subscription-service';
 import { createUserService } from './services/user-service';
 import { createPlanService } from './services/plan-service';
 import { createPropertyService } from './services/property-service';
+import { createMCPService } from './services/mcp-service';
 import { log } from './vite';
-import { hashPassword, verifyPassword, needsPasswordMigration } from './utils/password-utils';
+import { hashPassword, comparePassword, needsPasswordMigration } from './utils/password-utils';
 
 export async function setupServices(app: Express, server: Server): Promise<void> {
   const MemoryStore = createMemoryStore(session);
@@ -59,7 +60,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
           }
         } else {
           // Verify against hashed password
-          isValidPassword = await verifyPassword(password, user.password);
+          isValidPassword = await comparePassword(password, user.password);
         }
         
         if (!isValidPassword) {
@@ -100,6 +101,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   apiGateway.registerService('plans', 'http://localhost:5000/internal/plans');
   apiGateway.registerService('subscriptions', 'http://localhost:5000/internal/subscriptions');
   apiGateway.registerService('properties', 'http://localhost:5000/internal/properties');
+  apiGateway.registerService('mcp', 'http://localhost:5000/internal/mcp');
 
   // Create and setup services
   const authService = createAuthService(passport);
@@ -108,6 +110,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   const userService = createUserService();
   const planService = createPlanService();
   const propertyService = createPropertyService();
+  const mcpService = createMCPService();
 
   // Register internal routes for services
   app.use('/internal/auth', authService.getRouter());
@@ -116,6 +119,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   app.use('/internal/users', userService.getRouter());
   app.use('/internal/plans', planService.getRouter());
   app.use('/internal/properties', propertyService.getRouter());
+  app.use('/internal/mcp', mcpService.getRouter());
 
   // Register API Gateway routes
   app.use('/api-gateway', apiGateway.getRouter());
@@ -276,6 +280,78 @@ export async function setupServices(app: Express, server: Server): Promise<void>
       res.json({ message: `Service '${serviceName}' disabled` });
     } else {
       res.status(404).json({ message: `Service '${serviceName}' not found` });
+    }
+  });
+  
+  // MCP Functions and Workflows routes
+  app.get('/api/mcp/functions', async (req, res) => {
+    try {
+      const functions = await storage.getAllMcpFunctions();
+      res.json(functions);
+    } catch (error: any) {
+      log(`Legacy API - Error fetching MCP functions: ${error.message}`, 'routes');
+      res.status(500).json({ message: 'Failed to fetch MCP functions' });
+    }
+  });
+  
+  app.post('/api/mcp/functions', async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    
+    try {
+      const newFunction = await storage.createMcpFunction(req.body);
+      log(`Created new MCP function: ${newFunction.name}`, 'routes');
+      res.status(201).json(newFunction);
+    } catch (error: any) {
+      log(`Error creating MCP function: ${error.message}`, 'routes');
+      res.status(500).json({ message: 'Failed to create MCP function' });
+    }
+  });
+  
+  app.get('/api/mcp/workflows', async (req, res) => {
+    try {
+      const workflows = await storage.getAllMcpWorkflows();
+      res.json(workflows);
+    } catch (error: any) {
+      log(`Legacy API - Error fetching MCP workflows: ${error.message}`, 'routes');
+      res.status(500).json({ message: 'Failed to fetch MCP workflows' });
+    }
+  });
+  
+  app.post('/api/mcp/workflows', async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    
+    try {
+      const newWorkflow = await storage.createMcpWorkflow(req.body);
+      log(`Created new MCP workflow: ${newWorkflow.name}`, 'routes');
+      res.status(201).json(newWorkflow);
+    } catch (error: any) {
+      log(`Error creating MCP workflow: ${error.message}`, 'routes');
+      res.status(500).json({ message: 'Failed to create MCP workflow' });
+    }
+  });
+  
+  app.post('/api/mcp/functions/execute/:functionName', async (req, res) => {
+    try {
+      const response = await fetch('http://localhost:5000/internal/mcp/function/execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          functionName: req.params.functionName,
+          parameters: req.body
+        }),
+      });
+      
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error: any) {
+      log(`Error executing MCP function: ${error.message}`, 'routes');
+      res.status(500).json({ message: 'Failed to execute MCP function' });
     }
   });
 

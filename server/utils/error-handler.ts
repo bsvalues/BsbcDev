@@ -1,69 +1,99 @@
+import { NextFunction, Request, Response } from 'express';
+import { log } from '../vite';
 import { ZodError } from 'zod';
 import { fromZodError } from 'zod-validation-error';
-import { log } from '../vite';
 
-export interface ApiError {
+/**
+ * Error interface that will be used to format error responses
+ */
+export interface AppError {
   message: string;
-  status: number;
-  details?: string[];
+  status?: number;
   code?: string;
+  error?: Error | unknown;
+  details?: Record<string, any>;
 }
 
 /**
- * Format different error types into a consistent API error format
- * @param error The error to format
- * @returns Formatted API error
+ * Format error for API responses
+ * Sanitizes error object to only include safe information for client
  */
-export function formatError(error: any): ApiError {
-  // Log the error for server-side tracking
-  logError(error);
-  
-  if (error instanceof ZodError) {
-    // Handle Zod validation errors
-    const validationError = fromZodError(error);
-    return {
-      message: validationError.message,
-      status: 400,
-      details: validationError.details.map(d => d.message)
-    };
-  }
-  
-  if (error.status && error.message) {
-    // Handle errors that already have status and message
-    return {
-      message: error.message,
-      status: error.status,
-      code: error.code
-    };
-  }
-  
-  // Default error format
-  return {
-    message: error.message || 'An unexpected error occurred',
-    status: error.statusCode || 500
+export function formatError(error: AppError): Record<string, any> {
+  const response: Record<string, any> = {
+    message: error.message,
+    status: error.status || 500,
+    code: error.code || 'INTERNAL_ERROR'
   };
+
+  // Add detailed validation errors if available
+  if (error.details) {
+    response.details = error.details;
+  }
+
+  return response;
 }
 
 /**
- * Log error details to console for debugging
- * @param error The error to log
+ * Global error handling middleware
  */
-function logError(error: any): void {
-  // Get error details
-  const message = error.message || 'Unknown error';
-  const stack = error.stack || '';
-  const status = error.status || error.statusCode || 500;
-  
-  // Log with source context if available
-  const source = error.source || 'server';
-  log(`Error [${status}]: ${message}\n${stack}`, source);
+export function errorHandler(err: Error | AppError, req: Request, res: Response, next: NextFunction) {
+  // Log the error
+  log(`Error: ${err.message}`, 'error');
+  if ((err as AppError).error) {
+    console.error((err as AppError).error);
+  } else {
+    console.error(err);
+  }
+
+  // If the error is a Zod validation error, format it specially
+  if (err instanceof ZodError) {
+    const validationError = fromZodError(err);
+    return res.status(400).json(formatError({
+      message: 'Validation error',
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      details: { fields: validationError.details },
+      error: err
+    }));
+  }
+
+  // If it's our custom error type with status
+  if ((err as AppError).status) {
+    const appError = err as AppError;
+    return res.status(appError.status || 500).json(formatError(appError));
+  }
+
+  // Default error response for unexpected errors
+  res.status(500).json(formatError({
+    message: 'An unexpected error occurred',
+    status: 500,
+    code: 'INTERNAL_ERROR',
+    error: err
+  }));
 }
 
 /**
- * Express middleware for centralized error handling
+ * Handler for when routes are not found
  */
-export function errorHandlerMiddleware(err: any, req: any, res: any, next: any) {
-  const formattedError = formatError(err);
+export function notFoundHandler(req: Request, res: Response) {
+  log(`Route not found: ${req.method} ${req.originalUrl}`, 'error');
   
-  res.status(formattedError.status).json(formattedError);
+  res.status(404).json(formatError({
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+    status: 404,
+    code: 'NOT_FOUND'
+  }));
+}
+
+/**
+ * Creates an error with proper structure for the error handler
+ */
+export function createError(message: string, status = 500, code?: string, details?: Record<string, any>, error?: Error): AppError {
+  return {
+    message,
+    status,
+    code,
+    details,
+    error
+  };
 }

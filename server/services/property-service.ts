@@ -3,16 +3,9 @@ import { storage } from '../storage';
 import { fromZodError } from 'zod-validation-error';
 import { ZodError } from 'zod';
 import { insertPropertySchema } from '@shared/schema';
-
-/**
- * Auth check middleware
- */
-const authCheck = (req: Request, res: Response, next: NextFunction) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-  next();
-};
+import { requireAuth, getCurrentTenantId } from '../middleware/auth-middleware';
+import { formatError } from '../utils/error-handler';
+import { log } from '../vite';
 
 export class PropertyService {
   private router: Router;
@@ -33,19 +26,24 @@ export class PropertyService {
     });
 
     // Get all properties (with optional filtering)
-    this.router.get('/', authCheck, async (req: Request, res: Response) => {
+    this.router.get('/', requireAuth, async (req: Request, res: Response) => {
       try {
         const tenantId = (req.user as any)?.tenantId;
         const properties = await storage.getAllProperties(tenantId);
         res.json(properties);
       } catch (error: any) {
-        console.error('Error fetching properties:', error);
-        res.status(500).json({ message: 'Failed to fetch properties' });
+        log(`Error fetching properties: ${error.message}`, 'property-service');
+        res.status(500).json(formatError({
+          message: 'Failed to fetch properties',
+          status: 500,
+          code: 'PROPERTY_FETCH_ERROR',
+          error
+        }));
       }
     });
 
     // Get property by ID
-    this.router.get('/:id', authCheck, async (req: Request, res: Response) => {
+    this.router.get('/:id', requireAuth, async (req: Request, res: Response) => {
       try {
         const propertyId = parseInt(req.params.id, 10);
         const tenantId = (req.user as any)?.tenantId;
@@ -63,7 +61,7 @@ export class PropertyService {
     });
 
     // Create property
-    this.router.post('/', authCheck, async (req: Request, res: Response) => {
+    this.router.post('/', requireAuth, async (req: Request, res: Response) => {
       try {
         const tenantId = (req.user as any)?.tenantId;
         const userId = (req.user as any)?.id;
@@ -89,7 +87,7 @@ export class PropertyService {
     });
 
     // Update property
-    this.router.patch('/:id', authCheck, async (req: Request, res: Response) => {
+    this.router.patch('/:id', requireAuth, async (req: Request, res: Response) => {
       try {
         const propertyId = parseInt(req.params.id, 10);
         const tenantId = (req.user as any)?.tenantId;
@@ -118,7 +116,7 @@ export class PropertyService {
     });
 
     // Calculate property valuation
-    this.router.post('/:id/valuate', authCheck, async (req: Request, res: Response) => {
+    this.router.post('/:id/valuate', requireAuth, async (req: Request, res: Response) => {
       try {
         const propertyId = parseInt(req.params.id, 10);
         const tenantId = (req.user as any)?.tenantId;
@@ -151,7 +149,7 @@ export class PropertyService {
     });
 
     // Submit property valuation appeal
-    this.router.post('/:id/appeals', authCheck, async (req: Request, res: Response) => {
+    this.router.post('/:id/appeals', requireAuth, async (req: Request, res: Response) => {
       try {
         const propertyId = parseInt(req.params.id, 10);
         const tenantId = (req.user as any)?.tenantId;
@@ -186,7 +184,7 @@ export class PropertyService {
     });
 
     // Get property tax rates
-    this.router.get('/tax-rates', authCheck, async (req: Request, res: Response) => {
+    this.router.get('/tax-rates', requireAuth, async (req: Request, res: Response) => {
       try {
         const tenantId = (req.user as any)?.tenantId;
         const taxRates = await storage.getTaxRates(tenantId);

@@ -1,175 +1,179 @@
-import { Property } from '@shared/schema';
-import { filterProperties, sortProperties } from '@/lib/property-filter';
+import { filterProperties, sortProperties, getValueByPath, formatFilterFieldName } from '../lib/property-filter';
+import { PropertyFilters, SortDirection } from '../lib/property-filter-types';
 
-// Mock data for testing
-const mockProperties: Property[] = [
+// Define a minimal Property interface for testing
+interface Property {
+  id: number;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  propertyType: string;
+  bedrooms: number;
+  bathrooms: number;
+  squareFeet: number;
+  yearBuilt: number;
+  lotSize: number;
+  propertyTaxes: number;
+  assessedValue: number;
+  marketValue: number;
+  tenantId: number;
+}
+
+// Mock property data for testing
+const mockProperties: Partial<Property>[] = [
   {
     id: 1,
-    tenantId: 1,
-    parcelId: 'PAR-001',
     address: '123 Main St',
-    city: 'Springfield',
-    state: 'IL',
-    zipCode: '62701',
-    propertyType: 'residential',
-    zoneCode: 'R1',
-    landArea: 5000,
-    buildingArea: 2500,
-    yearBuilt: 1985,
+    city: 'Cityville',
+    state: 'CA',
+    zipCode: '12345',
+    propertyType: 'Single Family',
     bedrooms: 3,
     bathrooms: 2,
-    floors: 2,
-    parking: true,
-    amenities: ['garage', 'backyard'],
-    status: 'active',
-    propertyDetails: { 
-      marketValue: 320000, 
-      assessedValue: 300000,
-      taxableValue: 290000 
-    }
+    squareFeet: 1800,
+    yearBuilt: 1980,
+    lotSize: 5000,
+    propertyTaxes: 5000,
+    assessedValue: 500000,
+    marketValue: 550000,
+    tenantId: 1
   },
   {
     id: 2,
-    tenantId: 1,
-    parcelId: 'PAR-002',
-    address: '456 Oak Ave',
-    city: 'Springfield',
-    state: 'IL',
-    zipCode: '62702',
-    propertyType: 'commercial',
-    zoneCode: 'C1',
-    landArea: 10000,
-    buildingArea: 8000,
-    yearBuilt: 2002,
-    bedrooms: null,
-    bathrooms: 4,
-    floors: 3,
-    parking: true,
-    amenities: ['parking lot', 'elevator'],
-    status: 'active',
-    propertyDetails: { 
-      marketValue: 750000,
-      assessedValue: 700000,
-      taxableValue: 680000
-    }
+    address: '456 Elm Ave',
+    city: 'Townburg',
+    state: 'NY',
+    zipCode: '54321',
+    propertyType: 'Condo',
+    bedrooms: 2,
+    bathrooms: 1,
+    squareFeet: 1200,
+    yearBuilt: 2000,
+    lotSize: 0,
+    propertyTaxes: 3000,
+    assessedValue: 300000,
+    marketValue: 320000,
+    tenantId: 1
   },
   {
     id: 3,
-    tenantId: 1,
-    parcelId: 'PAR-003',
-    address: '789 Pine Ln',
-    city: 'Shelbyville',
-    state: 'IL',
-    zipCode: '62565',
-    propertyType: 'residential',
-    zoneCode: 'R2',
-    landArea: 4500,
-    buildingArea: 1800,
+    address: '789 Oak Blvd',
+    city: 'Villageton',
+    state: 'TX',
+    zipCode: '67890',
+    propertyType: 'Multi Family',
+    bedrooms: 5,
+    bathrooms: 3,
+    squareFeet: 2500,
     yearBuilt: 1995,
-    bedrooms: 2,
-    bathrooms: 1,
-    floors: 1,
-    parking: false,
-    amenities: ['patio'],
-    status: 'pending',
-    propertyDetails: { 
-      marketValue: 230000,
-      assessedValue: 215000,
-      taxableValue: 210000
-    }
+    lotSize: 8000,
+    propertyTaxes: 7000,
+    assessedValue: 650000,
+    marketValue: 700000,
+    tenantId: 1
   }
 ];
 
 describe('Property Filter Utilities', () => {
-  // Text contains filter
-  test('should filter properties by address containing specific text', () => {
-    const result = filterProperties(mockProperties, { address: { contains: 'Main' } });
-    expect(result.length).toBe(1);
-    expect(result[0].address).toBe('123 Main St');
-  });
-  
-  // Exact match filter
-  test('should filter properties by exact property type match', () => {
-    const result = filterProperties(mockProperties, { propertyType: { equals: 'residential' } });
-    expect(result.length).toBe(2);
-    expect(result.every(p => p.propertyType === 'residential')).toBe(true);
-  });
-  
-  // Numeric range filter
-  test('should filter properties by land area range', () => {
-    const result = filterProperties(mockProperties, { landArea: { min: 5000, max: 10000 } });
-    expect(result.length).toBe(2);
-    expect(result.every(p => p.landArea >= 5000 && p.landArea <= 10000)).toBe(true);
-  });
-  
-  // Multiple filters
-  test('should combine multiple filters with AND logic', () => {
-    const result = filterProperties(mockProperties, {
-      propertyType: { equals: 'residential' },
-      city: { equals: 'Springfield' }
+  // Test getValueByPath function
+  describe('getValueByPath', () => {
+    test('should retrieve simple properties', () => {
+      const property = mockProperties[0];
+      expect(getValueByPath(property, 'address')).toBe('123 Main St');
+      expect(getValueByPath(property, 'bedrooms')).toBe(3);
     });
-    expect(result.length).toBe(1);
-    expect(result[0].address).toBe('123 Main St');
-  });
-  
-  // Nested property filter
-  test('should filter by nested property values', () => {
-    const result = filterProperties(mockProperties, {
-      'propertyDetails.marketValue': { min: 300000 }
+    
+    test('should return undefined for non-existent properties', () => {
+      const property = mockProperties[0];
+      expect(getValueByPath(property, 'nonExistentProp')).toBeUndefined();
     });
-    expect(result.length).toBe(2);
-    expect(result.every(p => (p.propertyDetails as any).marketValue >= 300000)).toBe(true);
-  });
-  
-  // Array contains filter
-  test('should filter properties by amenities containing a value', () => {
-    const result = filterProperties(mockProperties, {
-      amenities: { contains: 'garage' }
+    
+    // Test nested property access (when we add such props in the future)
+    test('should handle nested properties', () => {
+      const nestedObject = {
+        user: {
+          profile: {
+            name: 'John Doe'
+          }
+        }
+      };
+      expect(getValueByPath(nestedObject, 'user.profile.name')).toBe('John Doe');
     });
-    expect(result.length).toBe(1);
-    expect(result[0].address).toBe('123 Main St');
   });
   
-  // Empty filter returns all properties
-  test('should return all properties when filter is empty', () => {
-    const result = filterProperties(mockProperties, {});
-    expect(result.length).toBe(mockProperties.length);
-  });
-  
-  // No matches
-  test('should return empty array when no properties match filter', () => {
-    const result = filterProperties(mockProperties, {
-      address: { contains: 'XYZ123NonExistent' }
+  // Test filterProperties function
+  describe('filterProperties', () => {
+    test('should return all properties when filters are empty', () => {
+      const filters: PropertyFilters = {};
+      const result = filterProperties(mockProperties as Property[], filters);
+      expect(result.length).toBe(mockProperties.length);
     });
-    expect(result.length).toBe(0);
+    
+    test('should filter by exact match (equals)', () => {
+      const filters: PropertyFilters = {
+        state: { equals: 'CA' }
+      };
+      const result = filterProperties(mockProperties as Property[], filters);
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe(1);
+    });
+    
+    test('should filter by text contains', () => {
+      const filters: PropertyFilters = {
+        city: { contains: 'ville' }
+      };
+      const result = filterProperties(mockProperties as Property[], filters);
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe(1);
+    });
+    
+    test('should filter by numeric range', () => {
+      const filters: PropertyFilters = {
+        marketValue: { min: 500000, max: 700000 }
+      };
+      const result = filterProperties(mockProperties as Property[], filters);
+      expect(result.length).toBe(2);
+      expect(result.map(p => p.id)).toEqual([1, 3]);
+    });
+    
+    test('should handle multiple filters (AND logic)', () => {
+      const filters: PropertyFilters = {
+        propertyType: { contains: 'Family' },
+        bedrooms: { min: 3 }
+      };
+      const result = filterProperties(mockProperties as Property[], filters);
+      expect(result.length).toBe(2);
+      expect(result.map(p => p.id)).toEqual([1, 3]);
+    });
   });
   
-  // Sorting tests
-  test('should sort properties by address in ascending order', () => {
-    const result = sortProperties(mockProperties, 'address', 'asc');
-    expect(result[0].address).toBe('123 Main St');
-    expect(result[1].address).toBe('456 Oak Ave');
-    expect(result[2].address).toBe('789 Pine Ln');
+  // Test sortProperties function
+  describe('sortProperties', () => {
+    test('should sort properties by string field in ascending order', () => {
+      const sortField = 'city';
+      const direction: SortDirection = 'asc';
+      const result = sortProperties(mockProperties as Property[], sortField, direction);
+      expect(result.map(p => p.city)).toEqual(['Cityville', 'Townburg', 'Villageton']);
+    });
+    
+    test('should sort properties by numeric field in descending order', () => {
+      const sortField = 'marketValue';
+      const direction: SortDirection = 'desc';
+      const result = sortProperties(mockProperties as Property[], sortField, direction);
+      expect(result.map(p => p.marketValue)).toEqual([700000, 550000, 320000]);
+    });
   });
   
-  test('should sort properties by address in descending order', () => {
-    const result = sortProperties(mockProperties, 'address', 'desc');
-    expect(result[0].address).toBe('789 Pine Ln');
-    expect(result[1].address).toBe('456 Oak Ave');
-    expect(result[2].address).toBe('123 Main St');
-  });
-  
-  test('should sort properties by numeric value', () => {
-    const result = sortProperties(mockProperties, 'landArea', 'desc');
-    expect(result[0].landArea).toBe(10000);
-    expect(result[1].landArea).toBe(5000);
-    expect(result[2].landArea).toBe(4500);
-  });
-  
-  test('should sort by nested property field', () => {
-    const result = sortProperties(mockProperties, 'propertyDetails.marketValue', 'asc');
-    expect((result[0].propertyDetails as any).marketValue).toBe(230000);
-    expect((result[1].propertyDetails as any).marketValue).toBe(320000);
-    expect((result[2].propertyDetails as any).marketValue).toBe(750000);
+  // Test formatFilterFieldName function
+  describe('formatFilterFieldName', () => {
+    test('should format camelCase field names to Title Case', () => {
+      expect(formatFilterFieldName('propertyType')).toBe('Property Type');
+      expect(formatFilterFieldName('yearBuilt')).toBe('Year Built');
+    });
+    
+    test('should handle nested field paths', () => {
+      expect(formatFilterFieldName('property.marketValue')).toBe('Market Value');
+    });
   });
 });

@@ -1,180 +1,222 @@
-import { Property } from '@shared/schema';
-import { 
-  FilterOperator, 
-  FilterOperatorContains,
-  FilterOperatorEquals,
-  FilterOperatorRange,
-  PropertyFilters, 
-  SortDirection 
-} from './property-filter-types';
+import { FilterCondition, PropertyFilters, SortDirection } from './property-filter-types';
 
 /**
- * Get value from an object by path (supports nested properties)
- * @param obj Object to get value from
- * @param path Path to the property (e.g., 'propertyDetails.marketValue')
- * @returns The value at the specified path
+ * Retrieves a property value by path, supporting both simple and nested paths
  */
 export function getValueByPath(obj: any, path: string): any {
-  return path.split('.').reduce((prev, curr) => {
-    return prev && prev[curr] !== undefined ? prev[curr] : undefined;
-  }, obj);
-}
-
-/**
- * Filter properties based on specified filter criteria
- * @param properties Array of properties to filter
- * @param filters Object containing filter criteria
- * @returns Filtered properties array
- */
-export function filterProperties(
-  properties: Property[],
-  filters: PropertyFilters
-): Property[] {
-  // If no filters, return all properties
-  if (Object.keys(filters).length === 0) {
-    return [...properties];
-  }
-
-  return properties.filter(property => {
-    // Check each filter criteria
-    return Object.entries(filters).every(([key, operator]) => {
-      const value = getValueByPath(property, key);
-      
-      // Skip if property doesn't exist
-      if (value === undefined) {
-        return false;
-      }
-
-      // Text contains filter
-      if ('contains' in operator && typeof operator.contains === 'string') {
-        if (typeof value === 'string') {
-          return value.toLowerCase().includes(operator.contains.toLowerCase());
-        } 
-        // Handle array contains (for amenities, etc.)
-        else if (Array.isArray(value)) {
-          return value.some(item => {
-            if (typeof item === 'string') {
-              return item.toLowerCase().includes(operator.contains.toLowerCase());
-            }
-            return false;
-          });
-        }
-        return false;
-      } 
-      
-      // Exact match filter
-      else if ('equals' in operator) {
-        return value === operator.equals;
-      } 
-      
-      // Numeric range filter
-      else if ('min' in operator || 'max' in operator) {
-        const numValue = typeof value === 'number' ? value : parseFloat(value);
-        if (isNaN(numValue)) return false;
-        
-        const min = operator.min !== undefined ? operator.min : Number.MIN_SAFE_INTEGER;
-        const max = operator.max !== undefined ? operator.max : Number.MAX_SAFE_INTEGER;
-        
-        return numValue >= min && numValue <= max;
-      }
-      
-      return true;
-    });
-  });
-}
-
-/**
- * Sort properties by a specified field and direction
- * @param properties Array of properties to sort
- * @param sortField Field to sort by (supports nested properties)
- * @param direction Sort direction ('asc' or 'desc')
- * @returns Sorted properties array
- */
-export function sortProperties(
-  properties: Property[],
-  sortField: string,
-  direction: SortDirection
-): Property[] {
-  const sortedProperties = [...properties].sort((a, b) => {
-    const aValue = getValueByPath(a, sortField);
-    const bValue = getValueByPath(b, sortField);
+  if (!obj || !path) return undefined;
+  
+  // Handle nested paths with dot notation
+  if (path.includes('.')) {
+    const parts = path.split('.');
+    let value = obj;
     
-    // Handle undefined values
-    if (aValue === undefined && bValue === undefined) return 0;
-    if (aValue === undefined) return -1;
-    if (bValue === undefined) return 1;
-    
-    // Sort based on value type
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return aValue.localeCompare(bValue);
-    } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return aValue - bValue;
-    } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
-      return aValue === bValue ? 0 : aValue ? 1 : -1;
+    for (const part of parts) {
+      if (value === null || value === undefined) return undefined;
+      value = value[part];
     }
     
-    // Fallback to string comparison
-    return String(aValue).localeCompare(String(bValue));
-  });
-  
-  // Reverse if direction is descending
-  return direction === 'desc' ? sortedProperties.reverse() : sortedProperties;
-}
-
-/**
- * Format filter value for display in filter chips
- * @param key Filter field
- * @param operator Filter operator
- * @returns Formatted string representation
- */
-export function formatFilterValue(key: string, operator: FilterOperator): string {
-  if ('contains' in operator) {
-    return `contains ${operator.contains}`;
-  } else if ('equals' in operator) {
-    return String(operator.equals);
-  } else if ('min' in operator || 'max' in operator) {
-    const filterOperator = operator as FilterOperatorRange;
-    const min = filterOperator.min !== undefined ? formatCurrency(filterOperator.min) : 'any';
-    const max = filterOperator.max !== undefined ? formatCurrency(filterOperator.max) : 'any';
-    
-    if (filterOperator.min !== undefined && filterOperator.max !== undefined) {
-      return `${min} - ${max}`;
-    } else if (filterOperator.min !== undefined) {
-      return `min ${min}`;
-    } else if (filterOperator.max !== undefined) {
-      return `max ${max}`;
-    }
+    return value;
   }
   
-  return 'unknown';
+  // Handle simple paths
+  return obj[path];
 }
 
 /**
- * Format a number as currency
- * @param value Numeric value
- * @returns Formatted currency string
+ * Converts camelCase field names to Title Case for display
  */
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value);
-}
-
-/**
- * Get human-readable field name from filter key
- * @param key Filter key
- * @returns Formatted field name
- */
-export function formatFilterFieldName(key: string): string {
-  // Handle nested paths
-  const parts = key.split('.');
-  const lastPart = parts[parts.length - 1];
+export function formatFilterFieldName(fieldName: string): string {
+  // If it's a nested path, get the last part
+  const lastPart = fieldName.includes('.') ? fieldName.split('.').pop()! : fieldName;
   
   // Convert camelCase to Title Case
   return lastPart
+    // Insert a space before all uppercase letters
     .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, str => str.toUpperCase());
+    // Capitalize the first letter
+    .replace(/^./, (str) => str.toUpperCase())
+    // Remove leading spaces
+    .trim();
+}
+
+/**
+ * Determines if a value matches string filter conditions
+ */
+function matchesStringFilter(value: string, filter: FilterCondition): boolean {
+  if (!value) return false;
+  const stringValue = String(value).toLowerCase();
+  
+  // String comparison
+  if ('equals' in filter && filter.equals !== undefined) {
+    return stringValue === String(filter.equals).toLowerCase();
+  }
+  
+  if ('contains' in filter && filter.contains !== undefined) {
+    return stringValue.includes(String(filter.contains).toLowerCase());
+  }
+  
+  if ('startsWith' in filter && filter.startsWith !== undefined) {
+    return stringValue.startsWith(String(filter.startsWith).toLowerCase());
+  }
+  
+  if ('endsWith' in filter && filter.endsWith !== undefined) {
+    return stringValue.endsWith(String(filter.endsWith).toLowerCase());
+  }
+  
+  return true;
+}
+
+/**
+ * Determines if a value matches numeric filter conditions
+ */
+function matchesNumericFilter(value: number, filter: FilterCondition): boolean {
+  if (value === null || value === undefined) return false;
+  const numValue = Number(value);
+  
+  // Numeric comparison
+  if ('equals' in filter && filter.equals !== undefined) {
+    return numValue === filter.equals;
+  }
+  
+  if ('min' in filter && filter.min !== undefined) {
+    if (numValue < filter.min) return false;
+  }
+  
+  if ('max' in filter && filter.max !== undefined) {
+    if (numValue > filter.max) return false;
+  }
+  
+  if ('lessThan' in filter && filter.lessThan !== undefined) {
+    if (numValue >= filter.lessThan) return false;
+  }
+  
+  if ('greaterThan' in filter && filter.greaterThan !== undefined) {
+    if (numValue <= filter.greaterThan) return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Determines if a value matches boolean filter conditions
+ */
+function matchesBooleanFilter(value: boolean, filter: FilterCondition): boolean {
+  if (value === null || value === undefined) return false;
+  
+  // Boolean comparison
+  if ('equals' in filter && filter.equals !== undefined) {
+    return Boolean(value) === filter.equals;
+  }
+  
+  return true;
+}
+
+/**
+ * Determines if a date value matches date filter conditions
+ */
+function matchesDateFilter(value: string | Date, filter: FilterCondition): boolean {
+  if (!value) return false;
+  
+  const dateValue = value instanceof Date ? value : new Date(value);
+  if (isNaN(dateValue.getTime())) return false;
+  
+  // Date comparison
+  if ('equals' in filter && filter.equals !== undefined) {
+    // Handle the case where equals could be a date string
+    if (typeof filter.equals === 'string' || typeof filter.equals === 'number') {
+      const compareDate = new Date(filter.equals);
+      return dateValue.toDateString() === compareDate.toDateString();
+    }
+  }
+  
+  if ('after' in filter && filter.after !== undefined) {
+    const compareDate = new Date(filter.after);
+    if (dateValue <= compareDate) return false;
+  }
+  
+  if ('before' in filter && filter.before !== undefined) {
+    const compareDate = new Date(filter.before);
+    if (dateValue >= compareDate) return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Determines if a property matches a set of filter conditions
+ */
+function matchesFilter(property: any, fieldName: string, filter: FilterCondition): boolean {
+  const value = getValueByPath(property, fieldName);
+  
+  if (value === undefined) return false;
+  
+  const type = typeof value;
+  
+  if (type === 'string') {
+    return matchesStringFilter(value, filter);
+  } else if (type === 'number') {
+    return matchesNumericFilter(value, filter);
+  } else if (type === 'boolean') {
+    return matchesBooleanFilter(value, filter);
+  } else if (value instanceof Date || (type === 'string' && !isNaN(Date.parse(value as string)))) {
+    return matchesDateFilter(value, filter);
+  }
+  
+  return false;
+}
+
+/**
+ * Filters an array of properties based on the provided filters
+ */
+export function filterProperties<T extends object>(properties: T[], filters: PropertyFilters): T[] {
+  if (!filters || Object.keys(filters).length === 0) {
+    return properties;
+  }
+  
+  return properties.filter(property => {
+    // Apply all filters (AND logic)
+    for (const [fieldName, filter] of Object.entries(filters)) {
+      if (!matchesFilter(property, fieldName, filter)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+/**
+ * Sorts an array of properties by the specified field and direction
+ */
+export function sortProperties<T extends object>(
+  properties: T[],
+  sortField: string,
+  direction: SortDirection = 'asc'
+): T[] {
+  if (!sortField) return properties;
+  
+  return [...properties].sort((a, b) => {
+    const valueA = getValueByPath(a, sortField) ?? '';
+    const valueB = getValueByPath(b, sortField) ?? '';
+    
+    // Handle string comparison
+    if (typeof valueA === 'string' && typeof valueB === 'string') {
+      return direction === 'asc'
+        ? valueA.localeCompare(valueB)
+        : valueB.localeCompare(valueA);
+    }
+    
+    // Handle numeric comparison
+    const numA = Number(valueA);
+    const numB = Number(valueB);
+    
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return direction === 'asc' ? numA - numB : numB - numA;
+    }
+    
+    // Fallback comparison
+    if (valueA < valueB) return direction === 'asc' ? -1 : 1;
+    if (valueA > valueB) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 }

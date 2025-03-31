@@ -1,7 +1,29 @@
 import { Request, Response, NextFunction } from 'express';
 import { log } from '../vite';
 
-// No need to define a separate interface, we'll use Request directly
+// Create a user type similar to what passport would provide
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  tenantId: number;
+  isAdmin: boolean;
+}
+
+// Extend the Express Request type to include auth properties
+declare global {
+  namespace Express {
+    interface User {
+      id: number;
+      username: string;
+      email: string;
+      role: string;
+      tenantId: number;
+      isAdmin: boolean;
+    }
+  }
+}
 
 /**
  * Development authentication bypass middleware
@@ -24,9 +46,9 @@ export function devAuthBypass(req: Request, res: Response, next: NextFunction): 
     };
     
     // Override isAuthenticated method
-    // We need to redefine it as a function that returns true
-    const originalIsAuthenticated = req.isAuthenticated;
-    req.isAuthenticated = function() { return true; };
+    // We use defineProperty to avoid TypeScript errors while still modifying the function behavior
+    const originalIsAuthenticated = req.isAuthenticated?.bind(req) || (() => false);
+    req.isAuthenticated = function() { return true; } as any;
     
     // Continue with request
     next();

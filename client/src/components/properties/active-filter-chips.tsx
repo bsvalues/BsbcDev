@@ -1,59 +1,103 @@
-import React from 'react';
-import { X } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatFilterValue, formatFilterFieldName } from '@/lib/property-filter';
-import { PropertyFilters } from '@/lib/property-filter-types';
+import { X } from 'lucide-react';
+import { PropertyFilters, StringFilter, NumericFilter, DateFilter, BooleanFilter } from '@/lib/property-filter-types';
 
 interface ActiveFilterChipsProps {
-  activeFilters: PropertyFilters;
-  onRemoveFilter: (key: string) => void;
-  onClearFilters: () => void;
+  filters: PropertyFilters;
+  onRemoveFilter: (fieldName: string) => void;
+  onClearAllFilters: () => void;
+  formatFieldName: (fieldName: string) => string;
 }
 
 export function ActiveFilterChips({
-  activeFilters,
+  filters,
   onRemoveFilter,
-  onClearFilters
+  onClearAllFilters,
+  formatFieldName
 }: ActiveFilterChipsProps) {
-  const filterKeys = Object.keys(activeFilters);
+  const hasActiveFilters = Object.keys(filters).length > 0;
   
-  if (filterKeys.length === 0) {
+  if (!hasActiveFilters) {
     return null;
   }
   
+  // Format a filter value for display
+  const formatFilterValue = (fieldName: string, filter: any): string => {
+    // Handle string filters
+    if ('contains' in filter) {
+      return `contains "${filter.contains}"`;
+    }
+    
+    if ('equals' in filter && typeof filter.equals === 'string') {
+      return `is "${filter.equals}"`;
+    }
+    
+    // Handle numeric filters
+    if ('min' in filter && 'max' in filter) {
+      return `${filter.min.toLocaleString()} - ${filter.max.toLocaleString()}`;
+    }
+    
+    if ('min' in filter) {
+      return `min ${filter.min.toLocaleString()}`;
+    }
+    
+    if ('max' in filter) {
+      return `max ${filter.max.toLocaleString()}`;
+    }
+    
+    if ('equals' in filter && typeof filter.equals === 'number') {
+      return `= ${filter.equals.toLocaleString()}`;
+    }
+    
+    // Handle boolean filters
+    if ('equals' in filter && typeof filter.equals === 'boolean') {
+      return filter.equals ? 'Yes' : 'No';
+    }
+    
+    // Handle date filters
+    if ('after' in filter && 'before' in filter) {
+      const afterDate = new Date(filter.after);
+      const beforeDate = new Date(filter.before);
+      return `${afterDate.toLocaleDateString()} - ${beforeDate.toLocaleDateString()}`;
+    }
+    
+    // Generic fallback
+    return JSON.stringify(filter).replace(/[{}"]/g, '');
+  };
+  
   return (
-    <div className="flex flex-wrap items-center gap-2 mb-4">
-      <span className="text-sm font-medium text-muted-foreground mr-1">Active Filters:</span>
-      
-      {filterKeys.map(key => (
-        <Badge 
-          key={key} 
-          variant="outline" 
-          className="flex items-center gap-1 px-2 py-1 bg-muted/40"
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Active Filters</h3>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={onClearAllFilters}
+          className="text-xs h-6 px-2"
         >
-          <span className="text-xs">
-            <span className="font-medium">{formatFilterFieldName(key)}:</span>{' '}
-            {formatFilterValue(key, activeFilters[key])}
-          </span>
-          <button 
-            onClick={() => onRemoveFilter(key)}
-            className="ml-1 rounded-full hover:bg-muted"
-            aria-label={`Remove ${key} filter`}
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </Badge>
-      ))}
+          Clear All
+        </Button>
+      </div>
       
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={onClearFilters}
-        className="ml-2 h-7 text-xs"
-      >
-        Clear All
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(filters).map(([fieldName, filter]) => (
+          <div 
+            key={fieldName}
+            className="bg-muted flex items-center gap-1 text-sm rounded-full px-3 py-1"
+          >
+            <span className="font-medium">{formatFieldName(fieldName)}:</span>
+            <span>{formatFilterValue(fieldName, filter)}</span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-4 w-4 rounded-full"
+              onClick={() => onRemoveFilter(fieldName)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

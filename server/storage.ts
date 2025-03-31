@@ -195,7 +195,13 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
+    const user: User = { 
+      ...insertUser,
+      id,
+      role: insertUser.role || 'user',
+      isDevUser: insertUser.isDevUser ?? null,
+      tenantId: insertUser.tenantId ?? null
+    };
     this.users.set(id, user);
     return user;
   }
@@ -225,7 +231,10 @@ export class MemStorage implements IStorage {
     const tenant: Tenant = { 
       ...insertTenant, 
       id, 
-      createdAt: new Date() 
+      createdAt: new Date(),
+      status: insertTenant.status || 'active',
+      plan: insertTenant.plan || 'free_trial',
+      settings: insertTenant.settings || {}
     };
     this.tenants.set(id, tenant);
     return tenant;
@@ -257,7 +266,13 @@ export class MemStorage implements IStorage {
   
   async createSubscription(insertSubscription: InsertSubscription): Promise<Subscription> {
     const id = this.currentSubscriptionId++;
-    const subscription: Subscription = { ...insertSubscription, id };
+    const subscription: Subscription = { 
+      ...insertSubscription, 
+      id,
+      status: insertSubscription.status || 'active',
+      startDate: insertSubscription.startDate || null,
+      endDate: insertSubscription.endDate || null
+    };
     this.subscriptions.set(id, subscription);
     return subscription;
   }
@@ -278,7 +293,12 @@ export class MemStorage implements IStorage {
   
   async createPlan(insertPlan: InsertPlan): Promise<Plan> {
     const id = this.currentPlanId++;
-    const plan: Plan = { ...insertPlan, id };
+    const plan: Plan = { 
+      ...insertPlan, 
+      id,
+      features: insertPlan.features || null,
+      isActive: insertPlan.isActive ?? null
+    };
     this.plans.set(id, plan);
     return plan;
   }
@@ -317,7 +337,16 @@ export class MemStorage implements IStorage {
       id,
       createdAt: now,
       updatedAt: now,
-      updatedBy: insertProperty.createdBy
+      updatedBy: insertProperty.createdBy || null,
+      status: insertProperty.status || 'active',
+      features: insertProperty.features || null,
+      propertyDetails: insertProperty.propertyDetails || {},
+      buildingArea: insertProperty.buildingArea || null,
+      yearBuilt: insertProperty.yearBuilt || null,
+      bedrooms: insertProperty.bedrooms || null,
+      bathrooms: insertProperty.bathrooms || null,
+      lastAssessedValue: insertProperty.lastAssessedValue || null,
+      lastAssessedDate: insertProperty.lastAssessedDate || null
     };
     this.properties.set(id, property);
     return property;
@@ -330,9 +359,13 @@ export class MemStorage implements IStorage {
     const updatedProperty = {
       ...existingProperty,
       ...propertyUpdate,
-      updatedAt: new Date(),
-      updatedBy: propertyUpdate.updatedBy || existingProperty.updatedBy
+      updatedAt: new Date()
     };
+    
+    if ('createdBy' in propertyUpdate) {
+      updatedProperty.updatedBy = propertyUpdate.createdBy || null;
+    }
+    
     this.properties.set(id, updatedProperty);
     return updatedProperty;
   }
@@ -355,7 +388,11 @@ export class MemStorage implements IStorage {
     const valuation: PropertyValuation = {
       ...insertValuation,
       id,
-      createdAt: new Date()
+      createdAt: new Date(),
+      status: insertValuation.status || 'draft',
+      valuationFactors: insertValuation.valuationFactors || {},
+      expirationDate: insertValuation.expirationDate || null,
+      notes: insertValuation.notes || null
     };
     this.propertyValuations.set(id, valuation);
     return valuation;
@@ -468,7 +505,9 @@ export class MemStorage implements IStorage {
       reviewedBy: null,
       decision: null,
       decisionReason: null,
-      adjustedValue: null
+      adjustedValue: null,
+      status: insertAppeal.status || 'pending',
+      evidenceUrls: insertAppeal.evidenceUrls || null
     };
     this.propertyAppeals.set(id, appeal);
     return appeal;
@@ -504,7 +543,11 @@ export class MemStorage implements IStorage {
       id,
       createdAt: now,
       updatedAt: now,
-      updatedBy: insertTaxRate.createdBy
+      updatedBy: insertTaxRate.createdBy || null,
+      status: insertTaxRate.status || 'active',
+      specialAssessments: insertTaxRate.specialAssessments || {},
+      expirationDate: insertTaxRate.expirationDate || null,
+      exemptionAmount: insertTaxRate.exemptionAmount || null
     };
     this.taxRates.set(id, taxRate);
     return taxRate;
@@ -517,9 +560,13 @@ export class MemStorage implements IStorage {
     const updatedTaxRate = {
       ...existingTaxRate,
       ...taxRateUpdate,
-      updatedAt: new Date(),
-      updatedBy: taxRateUpdate.updatedBy || existingTaxRate.updatedBy
+      updatedAt: new Date()
     };
+    
+    if ('createdBy' in taxRateUpdate) {
+      updatedTaxRate.updatedBy = taxRateUpdate.createdBy || null;
+    }
+    
     this.taxRates.set(id, updatedTaxRate);
     return updatedTaxRate;
   }
@@ -546,7 +593,13 @@ export class MemStorage implements IStorage {
       ...function_,
       id,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      examples: function_.examples || {},
+      permissions: function_.permissions || {},
+      timeout: function_.timeout || null,
+      idempotent: function_.idempotent ?? null,
+      version: function_.version || '1.0.0',
+      enabled: function_.enabled ?? null
     };
     this.mcpFunctions.set(id, mcpFunction);
     return mcpFunction;
@@ -587,7 +640,15 @@ export class MemStorage implements IStorage {
       ...workflow,
       id,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      description: workflow.description || null,
+      inputs: workflow.inputs || {},
+      outputs: workflow.outputs || {},
+      parallel: workflow.parallel || {},
+      timeout: workflow.timeout || null,
+      version: workflow.version || '1.0.0',
+      enabled: workflow.enabled ?? null,
+      errorHandlers: workflow.errorHandlers || {}
     };
     this.mcpWorkflows.set(id, mcpWorkflow);
     return mcpWorkflow;
@@ -618,7 +679,12 @@ export class MemStorage implements IStorage {
       ...execution,
       id,
       startedAt: now,
-      completedAt: null
+      completedAt: null,
+      status: execution.status || 'pending',
+      input: execution.input || {},
+      output: execution.output || {},
+      error: execution.error || {},
+      currentStep: execution.currentStep || null
     };
     this.mcpExecutions.set(id, mcpExecution);
     return mcpExecution;

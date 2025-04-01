@@ -36,6 +36,7 @@ export function Sidebar({ isMobile, isOpen, toggleSidebar }: SidebarProps) {
   // Additional application pages (these will use router navigation)
   const appPages = [
     { id: "properties", label: "Property Management", icon: "fa-building", path: "/properties" },
+    { id: "tenant-tests", label: "Tenant Testing", icon: "fa-vial", path: "/tenants/test" },
   ];
 
   const handleMenuItemClick = (item: string, path?: string) => {

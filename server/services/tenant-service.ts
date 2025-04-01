@@ -4,6 +4,7 @@ import { insertTenantSchema } from '@shared/schema';
 import { ZodError } from 'zod';
 import { fromZodError } from 'zod-validation-error';
 import { log } from '../vite';
+import { createTenantTestService } from './tenant-test-service';
 
 /**
  * Auth check middleware
@@ -19,11 +20,13 @@ export class TenantService {
   private router: Router;
   private tenantIdentificationStrategy: 'subdomain' | 'path' | 'header' | 'all';
   private tenantIsolationStrategy: 'database' | 'schema' | 'row';
+  private tenantTestService: ReturnType<typeof createTenantTestService>;
 
   constructor() {
     this.router = Router();
     this.tenantIdentificationStrategy = 'subdomain';
     this.tenantIsolationStrategy = 'database';
+    this.tenantTestService = createTenantTestService();
     this.setupRoutes();
   }
 
@@ -230,6 +233,63 @@ export class TenantService {
         identificationStrategy: this.tenantIdentificationStrategy,
         isolationStrategy: this.tenantIsolationStrategy
       });
+    });
+
+    // Mount tenant test service endpoints
+    
+    // Test tenant creation
+    this.router.post('/test/create', async (req, res) => {
+      try {
+        const result = await this.tenantTestService.testTenantCreation(req.body);
+        res.json(result);
+      } catch (error: any) {
+        log(`Error in tenant creation test: ${error.message}`, 'tenant-service');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Test tenant isolation
+    this.router.post('/test/isolation', async (req, res) => {
+      try {
+        const result = await this.tenantTestService.testTenantIsolation();
+        res.json(result);
+      } catch (error: any) {
+        log(`Error in tenant isolation test: ${error.message}`, 'tenant-service');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Test resource limits
+    this.router.post('/test/resource-limits', async (req, res) => {
+      try {
+        const result = await this.tenantTestService.testResourceLimits();
+        res.json(result);
+      } catch (error: any) {
+        log(`Error in resource limits test: ${error.message}`, 'tenant-service');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Run all tenant tests
+    this.router.post('/test/all', async (req, res) => {
+      try {
+        const result = await this.tenantTestService.runAllTests();
+        res.json(result);
+      } catch (error: any) {
+        log(`Error running all tenant tests: ${error.message}`, 'tenant-service');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Cleanup test resources
+    this.router.post('/test/cleanup', async (req, res) => {
+      try {
+        const result = await this.tenantTestService.cleanupTestResources();
+        res.json(result);
+      } catch (error: any) {
+        log(`Error cleaning up test resources: ${error.message}`, 'tenant-service');
+        res.status(500).json({ success: false, error: error.message });
+      }
     });
   }
 }

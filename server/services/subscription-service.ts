@@ -119,6 +119,27 @@ export class SubscriptionService {
       });
     });
 
+    // Get all subscriptions
+    this.router.get('/', async (req, res) => {
+      try {
+        // In a real implementation, we would filter by tenant or add pagination
+        const tenants = await storage.getAllTenants();
+        const subscriptions = [];
+        
+        for (const tenant of tenants) {
+          const subscription = await storage.getSubscriptionByTenantId(tenant.id);
+          if (subscription) {
+            subscriptions.push(subscription);
+          }
+        }
+        
+        res.json(subscriptions);
+      } catch (error: any) {
+        log(`Error fetching all subscriptions: ${error.message}`, 'subscription-service');
+        res.status(500).json({ message: 'Failed to fetch subscriptions' });
+      }
+    });
+
     // Get all plans
     this.router.get('/plans', async (req, res) => {
       try {

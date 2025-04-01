@@ -301,6 +301,25 @@ export async function setupServices(app: Express, server: Server): Promise<void>
     }
   });
 
+  // Subscription routes
+  app.get('/api/subscriptions', async (req, res) => {
+    try {
+      // Forward to subscription service
+      const response = await fetch('http://localhost:5000/internal/subscriptions', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error: any) {
+      log(`Legacy API - Error fetching subscriptions: ${error.message}`, 'routes');
+      res.status(500).json({ message: 'Failed to fetch subscriptions' });
+    }
+  });
+
   // Environment check route
   app.get('/api/env', (req, res) => {
     res.json({

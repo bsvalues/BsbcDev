@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/ui/sidebar";
 import ProgressTracker from "@/components/ui/progress-tracker";
+import DevModeToggle from "@/components/dev-mode-toggle";
 import Overview from "@/components/dashboard/overview";
 import RepositoryClone from "@/components/dashboard/repository-clone";
 import EnvironmentSetup from "@/components/dashboard/environment-setup";
@@ -92,6 +93,7 @@ export default function Dashboard() {
         <main className="p-6">
           <ProgressTracker />
           
+          <DevModeToggle />
           <Overview />
           <RepositoryClone />
           <EnvironmentSetup />

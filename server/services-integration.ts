@@ -37,6 +37,13 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   app.use(passport.initialize());
   app.use(passport.session());
   
+  // Initialize dev mode
+  if (typeof global.useDevMode === 'undefined') {
+    // By default, enable dev mode in development environment
+    global.useDevMode = process.env.NODE_ENV === 'development' ? true : false;
+    log(`Dev mode initialized to: ${global.useDevMode}`, 'services-integration');
+  }
+  
   // Note: Authentication is now fully bypassed in auth-middleware.ts
   // so we don't need the dev bypass middleware separately
 
@@ -175,8 +182,8 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   
   // Auth routes
   app.get('/api/auth/status', (req, res) => {
-    // Development mode bypass
-    if (process.env.NODE_ENV === 'development') {
+    // Development mode bypass (using our toggle)
+    if (process.env.NODE_ENV === 'development' && global.useDevMode !== false) {
       log(`DEV MODE: Auth bypass for /api/auth/status`, 'services-integration');
       const adminUser = {
         id: 1,
@@ -212,7 +219,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   // User routes
   app.get('/api/users/current', (req, res) => {
     // Development mode bypass
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development' && global.useDevMode !== false) {
       log(`DEV MODE: Auth bypass for /api/users/current`, 'services-integration');
       return res.json({
         id: 1,
@@ -253,7 +260,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   // Tenant routes
   app.get('/api/tenants', async (req, res) => {
     // Development mode bypass
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development' && global.useDevMode !== false) {
       log(`DEV MODE: Auth bypass for /api/tenants`, 'services-integration');
       try {
         const tenants = await storage.getAllTenants();
@@ -330,24 +337,44 @@ export async function setupServices(app: Express, server: Server): Promise<void>
     }
   });
 
-  // Environment check route
-  app.get('/api/env', (req, res) => {
-    res.json({
-      environment: process.env.NODE_ENV || 'development',
-      devAutoLogin: process.env.DEV_AUTO_LOGIN === 'true',
-      devUserId: process.env.DEV_USER_ID || '1'
-    });
-  });
 
+  
   // Health check
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
+  });
+  
+  // Development mode environment endpoints
+  app.get('/api/env', (req, res) => {
+    res.json({
+      nodeEnv: process.env.NODE_ENV,
+      useDevMode: global.useDevMode !== false,
+      devAutoLogin: process.env.DEV_AUTO_LOGIN === 'true'
+    });
+  });
+  
+  app.post('/api/env/toggle-mode', (req, res) => {
+    if (process.env.NODE_ENV !== 'development') {
+      return res.status(403).json({ 
+        error: 'Cannot toggle dev mode in production' 
+      });
+    }
+    
+    // Toggle the dev mode
+    global.useDevMode = global.useDevMode === false ? true : false;
+    
+    log(`Development mode toggled to: ${global.useDevMode}`, 'services-integration');
+    
+    res.json({
+      message: `Development mode ${global.useDevMode ? 'enabled' : 'disabled'}`,
+      useDevMode: global.useDevMode
+    });
   });
 
   // MCP admin routes
   app.get('/api/mcp/services', (req, res) => {
     // Development mode bypass
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development' && global.useDevMode !== false) {
       log(`DEV MODE: Auth bypass for /api/mcp/services`, 'services-integration');
       const serviceStatus = mcp.getServiceStatus();
       return res.json(serviceStatus);
@@ -493,7 +520,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
       
       // For development/testing only - create a temporary user session if not authenticated
       let authenticated = req.isAuthenticated();
-      if (!authenticated && process.env.NODE_ENV === 'development') {
+      if (!authenticated && process.env.NODE_ENV === 'development' && global.useDevMode !== false) {
         log('Dev mode - Creating temporary user session for workflow execution', 'routes');
         await new Promise<void>((resolve) => {
           req.login({ id: 1, role: 'admin', tenantId: 1 }, () => {

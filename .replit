@@ -57,3 +57,40 @@ args = "npm run test server/__tests__/api-auth.test.ts"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run test server/__tests__/property-service.test.ts"
+
+[[workflows.workflow]]
+name = "Full Test Suite"
+author = 37274620
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test server/__tests__/app-startup.test.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test server/__tests__/api-auth.test.ts "
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test server/__tests__/property-service.test.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test server/__tests__/property-comparison.test.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test test/core-system.test.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test test/auth-bypass.test.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test test/property-service.test.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test test/tenant-service.test.ts"

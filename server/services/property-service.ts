@@ -7,6 +7,10 @@ import { requireAuth, getCurrentTenantId } from '../middleware/auth-middleware';
 import { formatError } from '../utils/error-handler';
 import { log } from '../vite';
 
+// Import property search and batch operations routers
+import propertySearchRouter from './property-search';
+import propertyBatchRouter from './property-batch';
+
 export class PropertyService {
   private router: Router;
   private repository: IStorage;
@@ -47,6 +51,12 @@ export class PropertyService {
     this.router.get('/health', (req: Request, res: Response) => {
       res.json({ status: 'ok', service: 'properties' });
     });
+    
+    // Register the enhanced property search router
+    this.router.use('/search', requireAuth, propertySearchRouter);
+    
+    // Register the batch operations router
+    this.router.use('/batch', requireAuth, propertyBatchRouter);
 
     // Get all properties (with optional filtering)
     this.router.get('/', requireAuth, async (req: Request, res: Response) => {

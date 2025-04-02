@@ -239,7 +239,7 @@ const TenantsTestPage: React.FC = () => {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>
-              {allTestsMutation.data.success ? (
+              {allTestsMutation.data?.success ? (
                 <div className="flex items-center text-green-600">
                   <CheckCircle className="mr-2" /> All Tests Passed
                 </div>
@@ -255,7 +255,7 @@ const TenantsTestPage: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center">
                 <div className="w-8">
-                  {allTestsMutation.data.results.creation ? (
+                  {allTestsMutation.data?.results?.creation ? (
                     <CheckCircle className="text-green-600" />
                   ) : (
                     <XCircle className="text-red-600" />
@@ -265,7 +265,7 @@ const TenantsTestPage: React.FC = () => {
               </div>
               <div className="flex items-center">
                 <div className="w-8">
-                  {allTestsMutation.data.results.isolation ? (
+                  {allTestsMutation.data?.results?.isolation ? (
                     <CheckCircle className="text-green-600" />
                   ) : (
                     <XCircle className="text-red-600" />
@@ -275,7 +275,7 @@ const TenantsTestPage: React.FC = () => {
               </div>
               <div className="flex items-center">
                 <div className="w-8">
-                  {allTestsMutation.data.results.resourceLimits ? (
+                  {allTestsMutation.data?.results?.resourceLimits ? (
                     <CheckCircle className="text-green-600" />
                   ) : (
                     <XCircle className="text-red-600" />
@@ -285,7 +285,7 @@ const TenantsTestPage: React.FC = () => {
               </div>
               <div className="flex items-center">
                 <div className="w-8">
-                  {allTestsMutation.data.results.accessControl ? (
+                  {allTestsMutation.data?.results?.accessControl ? (
                     <CheckCircle className="text-green-600" />
                   ) : (
                     <XCircle className="text-red-600" />
@@ -295,7 +295,7 @@ const TenantsTestPage: React.FC = () => {
               </div>
             </div>
             <Separator className="my-4" />
-            <p className="font-medium">{allTestsMutation.data.results.summary}</p>
+            <p className="font-medium">{allTestsMutation.data?.results?.summary}</p>
           </CardContent>
         </Card>
       )}
@@ -376,7 +376,7 @@ const TenantsTestPage: React.FC = () => {
             <Card className="mt-4">
               <CardHeader>
                 <CardTitle>
-                  {creationTestMutation.data.success ? (
+                  {creationTestMutation.data?.success ? (
                     <div className="flex items-center text-green-600">
                       <CheckCircle className="mr-2" /> Test Passed
                     </div>
@@ -388,10 +388,10 @@ const TenantsTestPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {creationTestMutation.data.success ? (
-                  <p>Successfully created tenant with ID: {creationTestMutation.data.tenantId}</p>
+                {creationTestMutation.data?.success ? (
+                  <p>Successfully created tenant with ID: {creationTestMutation.data?.tenantId}</p>
                 ) : (
-                  <p>Error: {creationTestMutation.data.error}</p>
+                  <p>Error: {creationTestMutation.data?.error}</p>
                 )}
               </CardContent>
             </Card>
@@ -432,7 +432,7 @@ const TenantsTestPage: React.FC = () => {
             <Card className="mt-4">
               <CardHeader>
                 <CardTitle>
-                  {isolationTestMutation.data.success ? (
+                  {isolationTestMutation.data?.success ? (
                     <div className="flex items-center text-green-600">
                       <CheckCircle className="mr-2" /> Isolation Tests Passed
                     </div>
@@ -445,7 +445,7 @@ const TenantsTestPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {isolationTestMutation.data.results.map((result: TestResult, index: number) => (
+                  {isolationTestMutation.data?.results?.map((result: TestResult, index: number) => (
                     <div key={index} className="flex items-start pb-4 border-b last:border-b-0">
                       <div className="mt-0.5 mr-3">
                         {result.passed ? (
@@ -499,7 +499,7 @@ const TenantsTestPage: React.FC = () => {
             <Card className="mt-4">
               <CardHeader>
                 <CardTitle>
-                  {resourceLimitsTestMutation.data.success ? (
+                  {resourceLimitsTestMutation.data?.success ? (
                     <div className="flex items-center text-green-600">
                       <CheckCircle className="mr-2" /> Resource Limits Tests Passed
                     </div>
@@ -512,7 +512,7 @@ const TenantsTestPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {resourceLimitsTestMutation.data.results.map((result: TestResult, index: number) => (
+                  {resourceLimitsTestMutation.data?.results?.map((result: TestResult, index: number) => (
                     <div key={index} className="flex items-start pb-4 border-b last:border-b-0">
                       <div className="mt-0.5 mr-3">
                         {result.passed ? (

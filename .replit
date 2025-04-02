@@ -40,3 +40,20 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Run Core Tests"
+author = 37274620
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test server/__tests__/app-startup.test.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test server/__tests__/api-auth.test.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test server/__tests__/property-service.test.ts"

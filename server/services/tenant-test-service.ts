@@ -258,14 +258,11 @@ export class TenantTestService {
             case 'free trial':
               planLimit = 3;
               break;
-            case 'basic':
+            case 'basic plan':
               planLimit = 10;
               break;
-            case 'premium':
+            case 'premium plan':
               planLimit = 50;
-              break;
-            case 'enterprise':
-              planLimit = 999;
               break;
           }
         }
@@ -571,8 +568,8 @@ export class TenantTestService {
       }
       
       // 4. Create subscriptions with different plans
-      await this.createSubscriptionForTenant(tenant1.id, 'basic');
-      await this.createSubscriptionForTenant(tenant2.id, 'premium');
+      await this.createSubscriptionForTenant(tenant1.id, 'Basic Plan');
+      await this.createSubscriptionForTenant(tenant2.id, 'Premium Plan');
       
       // 5. Get tenant subscriptions
       const sub1Result = await this.getTenantSubscription(tenant1.id);
@@ -583,7 +580,7 @@ export class TenantTestService {
         const sub1 = sub1Result.subscription!;
         const sub2 = sub2Result.subscription!;
         
-        if (sub1.planName.toLowerCase() === 'basic' && sub2.planName.toLowerCase() === 'premium') {
+        if (sub1.planName.toLowerCase() === 'basic plan' && sub2.planName.toLowerCase() === 'premium plan') {
           results.push({
             testName: 'Subscription Isolation',
             passed: true,
@@ -686,7 +683,7 @@ export class TenantTestService {
       const creationResult = await this.testTenantCreation({
         name: 'Test Tenant',
         domain: `test-tenant-${Date.now()}.bsbc.test`,
-        plan: 'basic'
+        plan: 'Basic Plan'
       });
       
       // Run isolation tests
@@ -747,7 +744,7 @@ export class TenantTestService {
     
     try {
       // Create test tenant with basic plan (limited to 10 properties)
-      const tenant = await this.createTestTenantWithPlan('Resource-Test', 'basic');
+      const tenant = await this.createTestTenantWithPlan('Resource-Test', 'Basic Plan');
       
       // Create properties up to the limit (basic plan = 10)
       for (let i = 0; i < 10; i++) {

@@ -49,7 +49,7 @@ const TenantsTestPage: React.FC = () => {
   const [tenantData, setTenantData] = useState({
     name: '',
     domain: '',
-    plan: 'basic'
+    plan: 'Basic Plan'
   });
 
   // Creation test mutation
@@ -354,10 +354,9 @@ const TenantsTestPage: React.FC = () => {
                       onChange={(e) => setTenantData(prev => ({ ...prev, plan: e.target.value }))}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                      <option value="free">Free Trial</option>
-                      <option value="basic">Basic</option>
-                      <option value="premium">Premium</option>
-                      <option value="enterprise">Enterprise</option>
+                      <option value="Free Trial">Free Trial</option>
+                      <option value="Basic Plan">Basic Plan</option>
+                      <option value="Premium Plan">Premium Plan</option>
                     </select>
                   </div>
                 </div>

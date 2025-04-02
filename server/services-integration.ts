@@ -13,6 +13,7 @@ import { createUserService } from './services/user-service';
 import { createPlanService } from './services/plan-service';
 import { createPropertyService } from './services/property-service';
 import { createMCPService } from './services/mcp-service';
+import { TenantTestService } from './services/tenant-test-service';
 import { log } from './vite';
 // Auth bypass is now handled in auth-middleware.ts
 import { hashPassword, comparePassword, needsPasswordMigration } from './utils/password-utils';
@@ -106,6 +107,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   apiGateway.registerService('subscriptions', 'http://localhost:5000/internal/subscriptions');
   apiGateway.registerService('properties', 'http://localhost:5000/internal/properties');
   apiGateway.registerService('mcp', 'http://localhost:5000/internal/mcp');
+  apiGateway.registerService('tenants/test', 'http://localhost:5000/internal/tenant-test');
 
   // Create and setup services
   const authService = createAuthService(passport);
@@ -115,6 +117,7 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   const planService = createPlanService();
   const propertyService = createPropertyService();
   const mcpService = createMCPService();
+  const tenantTestService = new TenantTestService();
 
   // Register internal routes for services
   app.use('/internal/auth', authService.getRouter());
@@ -126,6 +129,13 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   
   // Register the MCP service
   app.use('/internal/mcp', mcpService.getRouter());
+  
+  // Register the Tenant Test service
+  app.use('/internal/tenant-test', tenantTestService.getRouter());
+  
+  // Direct access to tenant test service for the frontend
+  // This bypasses the API gateway for testing purposes
+  app.use('/api/tenants/test', tenantTestService.getRouter());
   
   // Add a test route for development that doesn't require authentication
   if (process.env.NODE_ENV === 'development') {

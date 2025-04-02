@@ -84,6 +84,10 @@ export const propertyValuations = pgTable("property_valuations", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   valuationFactors: jsonb("valuation_factors"),
+  confidenceScore: integer("confidence_score"), // 0-100 confidence in the valuation
+  predictedChange: doublePrecision("predicted_change"), // Predicted annual percentage change
+  seasonalAdjustment: doublePrecision("seasonal_adjustment"), // Seasonal adjustment factor
+  predictionModels: jsonb("prediction_models"), // Details about models used for prediction
 });
 
 export const propertyAppeals = pgTable("property_appeals", {
@@ -122,6 +126,49 @@ export const taxRates = pgTable("tax_rates", {
   status: text("status").notNull().default("active"),
 });
 
+// Workflow Engine Tables
+export const workflowTemplates = pgTable("workflow_templates", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull(), // property, appeal, valuation, etc.
+  isActive: boolean("is_active").default(true),
+  createdBy: integer("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  steps: jsonb("steps").notNull(), // Array of steps with conditions and actions
+  triggers: jsonb("triggers"), // Event triggers that can start this workflow
+});
+
+export const workflowInstances = pgTable("workflow_instances", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").notNull(),
+  tenantId: integer("tenant_id").notNull(),
+  name: text("name").notNull(),
+  status: text("status").notNull().default("active"), // active, completed, failed, suspended
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  currentStepIndex: integer("current_step_index").default(0),
+  relatedEntityType: text("related_entity_type"), // property, appeal, etc.
+  relatedEntityId: integer("related_entity_id"),
+  variables: jsonb("variables"), // Runtime variables/state for the workflow
+  logs: jsonb("logs"), // Execution logs
+});
+
+export const marketData = pgTable("market_data", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
+  dataSource: text("data_source").notNull(), // zillow, redfin, census, etc.
+  dataType: text("data_type").notNull(), // sales_trend, rental_trend, etc.
+  region: text("region").notNull(), // zip code, city, county, etc.
+  regionType: text("region_type").notNull(), // zip, city, county, etc.
+  collectedAt: timestamp("collected_at").defaultNow().notNull(),
+  effectiveDate: timestamp("effective_date").notNull(),
+  data: jsonb("data").notNull(), // The actual market data
+  metadata: jsonb("metadata"), // Additional information about the data
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true });
@@ -153,6 +200,23 @@ export const insertTaxRateSchema = createInsertSchema(taxRates).omit({
   updatedBy: true
 });
 
+export const insertWorkflowTemplateSchema = createInsertSchema(workflowTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertWorkflowInstanceSchema = createInsertSchema(workflowInstances).omit({
+  id: true,
+  startedAt: true,
+  completedAt: true
+});
+
+export const insertMarketDataSchema = createInsertSchema(marketData).omit({
+  id: true,
+  collectedAt: true
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -177,3 +241,12 @@ export type PropertyAppeal = typeof propertyAppeals.$inferSelect;
 
 export type InsertTaxRate = z.infer<typeof insertTaxRateSchema>;
 export type TaxRate = typeof taxRates.$inferSelect;
+
+export type InsertWorkflowTemplate = z.infer<typeof insertWorkflowTemplateSchema>;
+export type WorkflowTemplate = typeof workflowTemplates.$inferSelect;
+
+export type InsertWorkflowInstance = z.infer<typeof insertWorkflowInstanceSchema>;
+export type WorkflowInstance = typeof workflowInstances.$inferSelect;
+
+export type InsertMarketData = z.infer<typeof insertMarketDataSchema>;
+export type MarketData = typeof marketData.$inferSelect;

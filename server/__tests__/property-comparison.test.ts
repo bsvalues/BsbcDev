@@ -221,3 +221,40 @@ describe('Property Comparison Service', () => {
     });
   });
 });
+import { calculatePropertyComparison } from '../services/mcp-property-integration';
+
+describe('Property Comparison Functionality', () => {
+  const mockProperties = [
+    {
+      id: 1,
+      assessedValue: 300000,
+      marketValue: 350000,
+      buildingArea: 2000
+    },
+    {
+      id: 2,
+      assessedValue: 400000,
+      marketValue: 450000,
+      buildingArea: 2500
+    }
+  ];
+
+  test('calculates basic property metrics correctly', async () => {
+    const result = await calculatePropertyComparison({
+      propertyIds: [1, 2],
+      factors: ['assessedValue', 'marketValue']
+    });
+
+    expect(result.metrics.assessedValue.difference).toBe(100000);
+    expect(result.metrics.marketValue.difference).toBe(100000);
+  });
+
+  test('handles missing property data gracefully', async () => {
+    const result = await calculatePropertyComparison({
+      propertyIds: [1, 3], // 3 doesn't exist
+      factors: ['assessedValue']
+    });
+
+    expect(result.metrics.assessedValue.incomplete).toBe(true);
+  });
+});

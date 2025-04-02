@@ -7,21 +7,21 @@ export function SystemVerification() {
   const [verifiedComponents, setVerifiedComponents] = useState(3);
   const totalComponents = 5;
   const verificationPercentage = (verifiedComponents / totalComponents) * 100;
-  
+
   const { data: healthData } = useQuery({
     queryKey: ["/api/health"],
   });
-  
+
   const { data: tenantsData } = useQuery({
     queryKey: ["/api/tenants"],
   });
-  
+
   const [apiHealth, setApiHealth] = useState([
     { endpoint: "/api/health", method: "GET", status: "Loading...", responseTime: "--" },
     { endpoint: "/api/tenants", method: "GET", status: "Loading...", responseTime: "--" },
     { endpoint: "/api/subscriptions", method: "GET", status: "404 Not Found", responseTime: "--" },
   ]);
-  
+
   useEffect(() => {
     // Update API health check status when data is loaded
     if (healthData) {
@@ -35,7 +35,7 @@ export function SystemVerification() {
         return newHealth;
       });
     }
-    
+
     if (tenantsData) {
       setApiHealth(prev => {
         const newHealth = [...prev];
@@ -48,13 +48,13 @@ export function SystemVerification() {
       });
     }
   }, [healthData, tenantsData]);
-  
+
   const handleRunVerification = () => {
     toast({
       title: "Verification Started",
       description: "Running full system verification...",
     });
-    
+
     // Simulate verification process
     setTimeout(() => {
       setVerifiedComponents(4);
@@ -65,28 +65,28 @@ export function SystemVerification() {
       });
     }, 2000);
   };
-  
+
   const handleFixIssues = () => {
     toast({
       title: "Fix Issues",
       description: "Attempting to fix verification issues...",
     });
   };
-  
+
   const runTenantTests = () => {
     toast({
       title: "Tenant Tests",
       description: "Running tenant isolation tests...",
     });
   };
-  
+
   const runMigrations = () => {
     toast({
       title: "Database Migrations",
       description: "Running database migrations...",
     });
   };
-  
+
   const testSubscriptionFlow = () => {
     toast({
       title: "Subscription Tests",
@@ -99,17 +99,17 @@ export function SystemVerification() {
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <h2 className="text-2xl font-semibold mb-4">System Verification</h2>
         <p className="mb-4">Verify that all components of the SaaS application are properly configured and working.</p>
-        
+
         <div className="space-y-4 mb-6">
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 bg-gradient-to-r from-slate-50 to-white shadow-sm hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Repository Clone</h3>
               <span className="px-3 py-1 bg-success text-white text-xs rounded-full">Verified</span>
             </div>
             <p className="text-sm mt-1">Local repository is up to date with the remote master branch.</p>
           </div>
-          
-          <div className="border rounded-lg p-4">
+
+          <div className="border rounded-lg p-4 bg-gradient-to-r from-slate-50 to-white shadow-sm hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Environment Setup</h3>
               <span className="px-3 py-1 bg-warning text-white text-xs rounded-full">In Progress</span>
@@ -125,16 +125,16 @@ export function SystemVerification() {
               </button>
             </div>
           </div>
-          
-          <div className="border rounded-lg p-4">
+
+          <div className="border rounded-lg p-4 bg-gradient-to-r from-slate-50 to-white shadow-sm hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Auto-Login Configuration</h3>
               <span className="px-3 py-1 bg-success text-white text-xs rounded-full">Verified</span>
             </div>
             <p className="text-sm mt-1">Development auto-login is properly configured and functional.</p>
           </div>
-          
-          <div className="border rounded-lg p-4">
+
+          <div className="border rounded-lg p-4 bg-gradient-to-r from-slate-50 to-white shadow-sm hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Multi-Tenant Functionality</h3>
               <span className="px-3 py-1 bg-error text-white text-xs rounded-full">Not Verified</span>
@@ -150,8 +150,8 @@ export function SystemVerification() {
               </button>
             </div>
           </div>
-          
-          <div className="border rounded-lg p-4">
+
+          <div className="border rounded-lg p-4 bg-gradient-to-r from-slate-50 to-white shadow-sm hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Subscription Management</h3>
               <span className="px-3 py-1 bg-error text-white text-xs rounded-full">Not Verified</span>
@@ -168,7 +168,7 @@ export function SystemVerification() {
             </div>
           </div>
         </div>
-        
+
         <h3 className="text-lg font-medium mb-2">API Health Check</h3>
         <div className="overflow-x-auto mb-6">
           <table className="min-w-full border">
@@ -196,7 +196,7 @@ export function SystemVerification() {
             </tbody>
           </table>
         </div>
-        
+
         <div className="bg-light p-4 rounded-lg mb-4">
           <h3 className="text-lg font-medium mb-2">Complete Verification</h3>
           <div className="flex items-center mb-4">
@@ -215,7 +215,7 @@ export function SystemVerification() {
             <div>{verificationPercentage}%</div>
           </div>
         </div>
-        
+
         <div className="flex space-x-3 mt-4">
           <button 
             className="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-md transition-colors flex items-center"

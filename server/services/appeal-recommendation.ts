@@ -579,11 +579,36 @@ export class AppealRecommendationService {
         const propertyId = parseInt(req.params.propertyId);
         const tenantId = parseInt(req.query.tenantId as string) || 1;
         
+        // Set content type to ensure JSON response
+        res.setHeader('Content-Type', 'application/json');
+        
         // Generate recommendations
         const recommendations = await this.generateRecommendations(propertyId, tenantId);
         
         res.status(200).json(recommendations);
-      } catch (error) {
+      } catch (error: any) {
+        res.status(error.status || 500).json({ 
+          message: error.message || 'Internal server error' 
+        });
+      }
+    });
+    
+    // Alias endpoint for backward compatibility
+    this.router.get('/recommend/:propertyId', async (req: Request, res: Response) => {
+      try {
+        const propertyId = parseInt(req.params.propertyId);
+        const tenantId = parseInt(req.query.tenantId as string) || 1;
+        
+        // Set content type to ensure JSON response
+        res.setHeader('Content-Type', 'application/json');
+        
+        log(`Using alias endpoint /recommend/${propertyId} - recommend using /recommendations/${propertyId} instead`, 'appeal-recommendation');
+        
+        // Generate recommendations using the same method
+        const recommendations = await this.generateRecommendations(propertyId, tenantId);
+        
+        res.status(200).json(recommendations);
+      } catch (error: any) {
         res.status(error.status || 500).json({ 
           message: error.message || 'Internal server error' 
         });

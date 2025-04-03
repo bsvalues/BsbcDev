@@ -7,10 +7,15 @@ export class ApiGateway {
   private router: Router;
   private serviceRegistry: Map<string, string>;
   private healthCheckInterval: NodeJS.Timeout | null = null;
+  private routeAliases: Map<string, string> = new Map();
 
   constructor() {
     this.router = Router();
     this.serviceRegistry = new Map();
+    
+    // Set up route aliases for endpoints with potentially confusing names
+    this.routeAliases.set('appeal-recommendation/recommend', 'appeal-recommendation/recommendations');
+    
     this.setupRoutes();
   }
 
@@ -148,8 +153,26 @@ export class ApiGateway {
       try {
         // Remove the /api/:service part from the path and keep query params
         const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-        const path = urlObj.pathname.replace(`/api/${serviceName}`, '');
+        let path = urlObj.pathname.replace(`/api/${serviceName}`, '');
         const query = urlObj.search; // Includes the '?' if there are query params
+        
+        // Check for route aliases
+        // Manual iteration over Map since TypeScript has issues with Map.entries() in some environments
+        let foundAlias = false;
+        this.routeAliases.forEach((targetPath, aliasPath) => {
+          if (!foundAlias && urlObj.pathname.startsWith(`/api/${aliasPath}`)) {
+            const [aliasService, aliasEndpoint] = aliasPath.split('/');
+            const [targetService, targetEndpoint] = targetPath.split('/');
+            
+            // Only replace if the service names match
+            if (aliasService === serviceName) {
+              path = path.replace(`/${aliasEndpoint}`, `/${targetEndpoint}`);
+              log(`Remapping route from ${aliasEndpoint} to ${targetEndpoint}`, 'api-gateway');
+              foundAlias = true;
+            }
+          }
+        });
+        
         const fullUrl = `${serviceUrl}${path}${query}`;
         
         log(`Routing ${req.method} ${path}${query} to ${serviceName}`, 'api-gateway');
@@ -188,12 +211,8 @@ export class ApiGateway {
         // Log successful request
         log(`Service ${serviceName} responded in ${requestDuration}ms with status ${response.status}`, 'api-gateway');
 
-        // Ensure we have the correct content type
-        if (response.headers['content-type']) {
-          res.setHeader('Content-Type', response.headers['content-type']);
-        } else {
-          res.setHeader('Content-Type', 'application/json');
-        }
+        // Ensure we have the correct content type and that we're returning JSON
+        res.setHeader('Content-Type', 'application/json');
 
         // Send the response back to the client
         res.status(response.status);
@@ -202,10 +221,31 @@ export class ApiGateway {
         if (typeof response.data === 'object') {
           res.json(response.data);
         } else {
-          res.send(response.data);
+          // Try to parse the response as JSON if it's a string
+          try {
+            if (typeof response.data === 'string' && response.data.trim().startsWith('{')) {
+              const jsonData = JSON.parse(response.data);
+              res.json(jsonData);
+            } else {
+              // Fallback to sending as-is
+              log(`Warning: Service ${serviceName} returned non-JSON data: ${typeof response.data}`, 'api-gateway');
+              res.json({ 
+                message: "Response from service was not in JSON format",
+                serviceResponse: typeof response.data === 'string' ? response.data.substring(0, 100) + '...' : String(response.data) 
+              });
+            }
+          } catch (error) {
+            const parseError = error as Error;
+            log(`Error parsing response data from ${serviceName}: ${parseError.message}`, 'api-gateway');
+            res.json({ 
+              message: "Error parsing service response",
+              error: parseError.message
+            });
+          }
         }
-      } catch (error) {
-        log(`Error routing to ${serviceName}: ${error.message}`, 'error');
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        log(`Error routing to ${serviceName}: ${errorMessage}`, 'error');
         
         // Handle Axios errors
         if (axios.isAxiosError(error)) {

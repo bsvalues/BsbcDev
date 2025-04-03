@@ -115,7 +115,7 @@ export class ApiGateway {
       });
     });
 
-    // API Gateway routing with advanced error handling and request timing
+    // API Gateway routing with enhanced debugging and error handling
     this.router.use('/api/:service', async (req: Request, res: Response) => {
       const serviceName = req.params.service;
       const serviceUrl = this.serviceRegistry.get(serviceName);
@@ -146,11 +146,13 @@ export class ApiGateway {
       const startTime = process.hrtime();
 
       try {
-        // Remove the /api/:service part from the path
-        const path = req.url.replace(`/api/${serviceName}`, '');
-        const fullUrl = `${serviceUrl}${path}`;
+        // Remove the /api/:service part from the path and keep query params
+        const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+        const path = urlObj.pathname.replace(`/api/${serviceName}`, '');
+        const query = urlObj.search; // Includes the '?' if there are query params
+        const fullUrl = `${serviceUrl}${path}${query}`;
         
-        log(`Routing ${req.method} ${path} to ${serviceName}`, 'api-gateway');
+        log(`Routing ${req.method} ${path}${query} to ${serviceName}`, 'api-gateway');
 
         // Forward the request to the appropriate service with timeout
         const response = await axios({
@@ -158,15 +160,22 @@ export class ApiGateway {
           url: fullUrl,
           data: req.body,
           headers: {
-            ...req.headers as any,
-            host: undefined, // Remove host header to avoid conflicts
+            // Only forward safe headers to avoid conflicts
+            'content-type': req.headers['content-type'],
+            'accept': req.headers['accept'],
+            'authorization': req.headers['authorization'],
             'x-forwarded-for': req.ip || req.socket.remoteAddress,
             'x-forwarded-proto': req.protocol,
             'x-api-gateway': 'true'
           },
-          timeout: 30000, // 30 second timeout for service requests
+          timeout: 10000, // Reduced timeout to 10 seconds
           // Forward cookies and authentication information
-          withCredentials: true
+          withCredentials: true,
+          // Add debug information
+          validateStatus: function (status) {
+            // Consider all status codes valid to handle in our own way
+            return true;
+          }
         });
 
         // Calculate the request duration
@@ -177,18 +186,38 @@ export class ApiGateway {
         res.setHeader('X-Response-Time', `${requestDuration}ms`);
         
         // Log successful request
-        log(`Service ${serviceName} responded in ${requestDuration}ms`, 'api-gateway');
+        log(`Service ${serviceName} responded in ${requestDuration}ms with status ${response.status}`, 'api-gateway');
+
+        // Ensure we have the correct content type
+        if (response.headers['content-type']) {
+          res.setHeader('Content-Type', response.headers['content-type']);
+        } else {
+          res.setHeader('Content-Type', 'application/json');
+        }
 
         // Send the response back to the client
-        res.status(response.status).json(response.data);
+        res.status(response.status);
+        
+        // Check if the response is JSON
+        if (typeof response.data === 'object') {
+          res.json(response.data);
+        } else {
+          res.send(response.data);
+        }
       } catch (error) {
+        log(`Error routing to ${serviceName}: ${error.message}`, 'error');
+        
         // Handle Axios errors
         if (axios.isAxiosError(error)) {
           const axiosError = error as AxiosError;
           if (axiosError.response) {
             // The request was made and the server responded with a status code
             // that falls out of the range of 2xx
-            res.status(axiosError.response.status).json(axiosError.response.data);
+            if (axiosError.response.headers['content-type']?.includes('application/json')) {
+              res.status(axiosError.response.status).json(axiosError.response.data);
+            } else {
+              res.status(axiosError.response.status).send(axiosError.response.data);
+            }
           } else if (axiosError.request) {
             // The request was made but no response was received
             res.status(504).json({ 

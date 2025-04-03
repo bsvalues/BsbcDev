@@ -14,6 +14,10 @@ import { createPlanService } from './services/plan-service';
 import { createPropertyService } from './services/property-service';
 import { createMCPService } from './services/mcp-service';
 import { TenantTestService } from './services/tenant-test-service';
+import { createPredictiveValuationService } from './services/predictive-valuation';
+import { createAppealRecommendationService } from './services/appeal-recommendation';
+import { createWorkflowEngineService } from './services/workflow-engine';
+import { createMarketIntelligenceService } from './services/market-intelligence';
 import { log } from './vite';
 // Auth bypass is now handled in auth-middleware.ts
 import { hashPassword, comparePassword, needsPasswordMigration } from './utils/password-utils';
@@ -115,6 +119,12 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   apiGateway.registerService('properties', 'http://localhost:5000/internal/properties');
   apiGateway.registerService('mcp', 'http://localhost:5000/internal/mcp');
   apiGateway.registerService('tenants/test', 'http://localhost:5000/internal/tenant-test');
+  
+  // Register intelligent services with API Gateway
+  apiGateway.registerService('predictive-valuation', 'http://localhost:5000/internal/predictive-valuation');
+  apiGateway.registerService('appeal-recommendation', 'http://localhost:5000/internal/appeal-recommendation');
+  apiGateway.registerService('workflow-engine', 'http://localhost:5000/internal/workflow-engine');
+  apiGateway.registerService('market-intelligence', 'http://localhost:5000/internal/market-intelligence');
 
   // Create and setup services
   const authService = createAuthService(passport);
@@ -125,6 +135,12 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   const propertyService = createPropertyService();
   const mcpService = createMCPService();
   const tenantTestService = new TenantTestService();
+  
+  // Create intelligent services
+  const predictiveValuationService = createPredictiveValuationService(storage);
+  const appealRecommendationService = createAppealRecommendationService(storage);
+  const workflowEngineService = createWorkflowEngineService(storage);
+  const marketIntelligenceService = createMarketIntelligenceService(storage);
 
   // Register internal routes for services
   app.use('/internal/auth', authService.getRouter());
@@ -139,6 +155,12 @@ export async function setupServices(app: Express, server: Server): Promise<void>
   
   // Register the Tenant Test service
   app.use('/internal/tenant-test', tenantTestService.getRouter());
+  
+  // Register intelligent services
+  app.use('/internal/predictive-valuation', predictiveValuationService.getRouter());
+  app.use('/internal/appeal-recommendation', appealRecommendationService.getRouter());
+  app.use('/internal/workflow-engine', workflowEngineService.getRouter());
+  app.use('/internal/market-intelligence', marketIntelligenceService.getRouter());
   
   // Direct access to tenant test service for the frontend
   // This bypasses the API gateway for testing purposes

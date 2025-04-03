@@ -513,7 +513,35 @@ export class PredictiveValuationService {
       res.status(200).json({ status: 'ok' });
     });
 
-    // Generate prediction endpoint
+    // GET endpoint for prediction (returns stub or latest prediction)
+    this.router.get('/predict/:propertyId', async (req: Request, res: Response) => {
+      try {
+        const propertyId = parseInt(req.params.propertyId);
+        const tenantId = parseInt(req.query.tenantId as string) || 1;
+        
+        // For GET requests, use today's date for the prediction
+        const predictionDate = new Date();
+        
+        try {
+          // Try to find the property and generate a prediction
+          const prediction = await this.generatePrediction(propertyId, tenantId, predictionDate);
+          res.status(200).json(prediction);
+        } catch (error) {
+          // If there are no valuations or the property doesn't exist
+          res.status(404).json({ 
+            message: error.message || 'Could not generate prediction',
+            propertyId,
+            tenantId
+          });
+        }
+      } catch (error) {
+        res.status(error.status || 500).json({ 
+          message: error.message || 'Internal server error' 
+        });
+      }
+    });
+
+    // Generate prediction endpoint (POST with specific date)
     this.router.post('/predict/:propertyId', async (req: Request, res: Response) => {
       try {
         const propertyId = parseInt(req.params.propertyId);
